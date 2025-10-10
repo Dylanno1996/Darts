@@ -21,6 +21,30 @@ if all_data:
     throw_cols = [col for col in full_df.columns if col.startswith("Throw_")]
 
     if "Player" in full_df.columns and throw_cols:
+    # Calculate 180s for the full dataset (all competitions)
+        full_df["180s"] = full_df[throw_cols].apply(
+            lambda row: sum(score == 180 for score in row if pd.notna(score)), axis=1
+        )
+
+    # Group by competition and player to find total 180s per competition
+        comp_180s = (
+            full_df.groupby(["Competition", "Player"])["180s"].sum().reset_index()
+        )
+
+    # Find the single highest 180 total in any competition
+        max_180_row = comp_180s.loc[comp_180s["180s"].idxmax()]
+        max_180s = int(max_180_row["180s"])
+        top_player = max_180_row["Player"]
+        top_comp = max_180_row["Competition"]
+
+        st.markdown(
+            f"🏆 **Most 180s in a single competition:** {top_player} — {max_180s} (at {top_comp})"
+        )
+
+    # Identify throw columns dynamically
+    throw_cols = [col for col in full_df.columns if col.startswith("Throw_")]
+
+    if "Player" in full_df.columns and throw_cols:
         # Dropdown for competition selection
         competitions = full_df["Competition"].unique()
         selected_comp = st.selectbox("Select a competition", competitions)
@@ -63,5 +87,6 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
