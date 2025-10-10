@@ -32,13 +32,16 @@ if all_data:
             lambda row: sum(score == 180 for score in row if pd.notna(score)), axis=1
         )
         player_180s = comp_df.groupby("Player")["180s_in_leg"].sum().reset_index()
+
+        # Filter players with at least 1 180
+        player_180s = player_180s[player_180s["180s_in_leg"] > 0]
         player_180s = player_180s.sort_values(by="180s_in_leg", ascending=False)
 
-        st.subheader(f"Total 180s by Player in {selected_comp}")
-        st.table(player_180s)
+        # Total 180s in competition
+        total_180s = player_180s["180s_in_leg"].sum()
 
-        # Optional: Bar chart
-        st.bar_chart(player_180s.set_index("Player"))
+        st.subheader(f"Total 180s in {selected_comp}: {total_180s}")
+        st.table(player_180s)
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
