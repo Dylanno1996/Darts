@@ -53,7 +53,7 @@ if all_data:
         styled_df = player_stats.style.background_gradient(
             subset=["180s"],
             cmap="Greens",   # built-in light→dark green gradient
-            low=0, high=1    # adjust brightness range (0–1)
+            low=0.5, high=1    # adjust brightness range (0–1)
         )
         st.dataframe(styled_df, hide_index=True)
 
@@ -63,4 +63,5 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
