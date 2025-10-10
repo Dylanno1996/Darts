@@ -38,7 +38,7 @@ if all_data:
         player_180s = player_180s.sort_values(by="180s", ascending=False)
 
         # Remove index completely
-        player_180s = player_180s.reset_index(drop=True)
+        st.dataframe(player_180s, hide_index=True)
 
         # Total 180s in competition
         total_180s = player_180s["180s"].sum()
@@ -49,4 +49,5 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
