@@ -54,12 +54,8 @@ if all_data:
         st.dataframe(styled_df, hide_index=True)
 
         # Display table without index
-        st.dataframe(player_stats, hide_index=True)
+        #st.dataframe(player_stats, hide_index=True)
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
-
-
-
-
