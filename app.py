@@ -43,6 +43,7 @@ if all_data:
 
         # Sort by 180s first, then 140-179
         player_stats = player_stats.sort_values(by=["180s", "140_179", "100_139"], ascending=[False, False, False])
+        player_stats = player_stats.head(5)
 
         # Total 180s in competition
         total_180s = player_stats["180s"].sum()
@@ -55,5 +56,6 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
