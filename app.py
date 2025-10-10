@@ -42,3 +42,4 @@ if all_data:
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
+    st.warning("No CSV files found in the data folder.")
