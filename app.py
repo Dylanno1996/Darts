@@ -50,12 +50,16 @@ if all_data:
 
         st.subheader(f"Total 180s - {total_180s}")
 
+        styled_df = player_stats.style.background_gradient(subset=["180s"], cmap="Greens")
+        st.dataframe(styled_df, hide_index=True)
+
         # Display table without index
         st.dataframe(player_stats, hide_index=True)
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
 
