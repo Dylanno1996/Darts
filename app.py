@@ -40,10 +40,11 @@ if all_data:
         # Total 180s in competition
         total_180s = player_180s["180s_in_leg"].sum()
 
-        st.subheader(f"Total 180s in {selected_comp}: {total_180s}")
+        st.subheader(f"{total_180s}")
         st.table(player_180s.style.hide(axis="index"))  # ✅ hides index
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
