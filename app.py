@@ -27,29 +27,31 @@ if all_data:
 
         comp_df = full_df[full_df["Competition"] == selected_comp]
 
-        # Count 180s for each player in selected competition
+        # Count 180s and 140-179 scores for each player
         comp_df["180s"] = comp_df[throw_cols].apply(
             lambda row: sum(score == 180 for score in row if pd.notna(score)), axis=1
         )
-        player_180s = comp_df.groupby("Player")["180s"].sum().reset_index()
+        comp_df["140_179"] = comp_df[throw_cols].apply(
+            lambda row: sum(140 <= score <= 179 for score in row if pd.notna(score)), axis=1
+        )
+
+        # Group by player
+        player_stats = comp_df.groupby("Player")[["180s", "140_179"]].sum().reset_index()
 
         # Filter players with at least 1 180
-        player_180s = player_180s[player_180s["180s"] > 0]
-        player_180s = player_180s.sort_values(by="180s", ascending=False)
+        player_stats = player_stats[player_stats["180s"] > 0]
+
+        # Sort by 180s first, then 140-179
+        player_stats = player_stats.sort_values(by=["180s", "140_179"], ascending=[False, False])
 
         # Total 180s in competition
-        total_180s = player_180s["180s"].sum()
+        total_180s = player_stats["180s"].sum()
 
-        st.subheader(f"{total_180s}")
+        st.subheader(f"Total 180s in {selected_comp}: {total_180s}")
 
-        # Remove index completely
-        st.dataframe(player_180s, hide_index=True)
-
+        # Display table without index
+        st.dataframe(player_stats, hide_index=True)
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
-
-
-
-
