@@ -41,7 +41,7 @@ if all_data:
         total_180s = player_180s["180s_in_leg"].sum()
 
         st.subheader(f"Total 180s in {selected_comp}: {total_180s}")
-        st.table(player_180s)
+        st.table(player_180s.to_html(index=False, escape=False))
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
