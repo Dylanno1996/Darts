@@ -41,11 +41,12 @@ if all_data:
         total_180s = player_180s["180s"].sum()
 
         st.subheader(f"{total_180s}")
-        st.table(player_180s.reset_index(drop=True)
+        st.table(player_180s.reset_index(drop=True))
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
 
