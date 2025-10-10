@@ -28,17 +28,17 @@ if all_data:
         comp_df = full_df[full_df["Competition"] == selected_comp]
 
         # Count 180s for each player in selected competition
-        comp_df["180s_in_leg"] = comp_df[throw_cols].apply(
+        comp_df["180s"] = comp_df[throw_cols].apply(
             lambda row: sum(score == 180 for score in row if pd.notna(score)), axis=1
         )
-        player_180s = comp_df.groupby("Player")["180s_in_leg"].sum().reset_index()
+        player_180s = comp_df.groupby("Player")["180s"].sum().reset_index()
 
         # Filter players with at least 1 180
-        player_180s = player_180s[player_180s["180s_in_leg"] > 0]
-        player_180s = player_180s.sort_values(by="180s_in_leg", ascending=False)
+        player_180s = player_180s[player_180s["180s"] > 0]
+        player_180s = player_180s.sort_values(by="180s", ascending=False)
 
         # Total 180s in competition
-        total_180s = player_180s["180s_in_leg"].sum()
+        total_180s = player_180s["180s"].sum()
 
         st.subheader(f"{total_180s}")
         st.table(player_180s.style.hide(axis="index"))  # ✅ hides index
@@ -46,5 +46,6 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
