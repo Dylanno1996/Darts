@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import os
 
-st.title("Darts League - 180s Tracker by Competition")
+st.title("IDL GP Stats")
 
 data_folder = "data"
 all_data = []
@@ -46,3 +46,4 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
