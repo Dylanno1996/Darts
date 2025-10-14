@@ -17,20 +17,40 @@ for file in os.listdir(data_folder):
 if all_data:
     full_df = pd.concat(all_data, ignore_index=True)
 
-    # --- Normalize date format ---
+    # --- Normalize and clean date formats safely ---
     if "Date" in full_df.columns:
-        # Try to parse all date formats automatically
-        full_df["Date"] = pd.to_datetime(full_df["Date"], errors="coerce", dayfirst=True)
-        # Remove rows where date couldn't be parsed (optional)
-        full_df = full_df.dropna(subset=["Date"])
-        # Format date to a consistent string (e.g. 21/03/2025)
-        full_df["Date_str"] = full_df["Date"].dt.strftime("%d/%m/%Y")
+        # First, try automatic parsing (dayfirst helps with DD/MM/YYYY)
+        full_df["ParsedDate"] = pd.to_datetime(full_df["Date"], errors="coerce", dayfirst=True)
 
-    # Create unified Competition column
-    full_df["Competition"] = full_df["Venue"] + " - " + full_df["Date_str"]
+        # For any unparsed dates, try another pass assuming monthfirst (MM-DD-YYYY)
+        mask_unparsed = full_df["ParsedDate"].isna()
+        if mask_unparsed.any():
+            full_df.loc[mask_unparsed, "ParsedDate"] = pd.to_datetime(
+                full_df.loc[mask_unparsed, "Date"], errors="coerce", dayfirst=False
+            )
 
-    # --- Sort competitions by date (newest → oldest) ---
-    full_df = full_df.sort_values("Date", ascending=False)
+        # Still missing dates? Fill them with original string as fallback marker
+        full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d/%m/%Y")
+        full_df.loc[full_df["Date_str"].isna(), "Date_str"] = full_df["Date"]
+
+    # Create unified Competition label
+    full_df["Competition"] = full_df["Venue"].astype(str) + " - " + full_df["Date_str"]
+
+    # --- Sort competitions by date (newest first), using ParsedDate when available ---
+    full_df = full_df.sort_values("ParsedDate", ascending=False, na_position="last")
+
+    # Create dropdown list (ensure unique competitions)
+    competitions = (
+        full_df[["Competition", "ParsedDate"]]
+        .drop_duplicates()
+        .sort_values("ParsedDate", ascending=False)
+    )
+
+    selected_comp = st.selectbox(
+        "Select a competition",
+        competitions["Competition"].tolist()
+    )
+
 
     # Identify throw columns dynamically
     throw_cols = [col for col in full_df.columns if col.startswith("Throw_")]
@@ -108,6 +128,7 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
 
