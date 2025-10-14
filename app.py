@@ -137,18 +137,14 @@ if all_data:
 
         st.subheader(f"Total 180s - {total_180s}")
 
-        # Display top 5 with a light background gradient for 180s
-        styled_df = top5_stats.style.background_gradient(
-            subset=["180s"],
-            cmap="Greens",
-            low=0.25, high=1
-        )
-        st.dataframe(styled_df, hide_index=True)
+        # Display top 5 without conditional formatting
+        st.dataframe(top5_stats, hide_index=True)
 
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
 
