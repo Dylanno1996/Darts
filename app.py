@@ -143,12 +143,13 @@ if all_data:
             #cmap="Greens",
             #low=0.25, high=1
         #)
-        #st.dataframe(styled_df, hide_index=True)
+        st.dataframe(styled_df, hide_index=True)
 
     else:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
 
