@@ -6,37 +6,14 @@ st.title("IDL GP Stats")
 
 data_folder = "data"
 all_data = []
-suspect_files = []  # To store files that look like mm-dd-yyyy
 
-# Load all CSVs and detect ambiguous date formats
+# Load all CSVs
 for file in os.listdir(data_folder):
     if file.endswith(".csv"):
         df = pd.read_csv(os.path.join(data_folder, file))
-        if "Date" in df.columns:
-            # Standardize separators
-            clean_dates = df["Date"].astype(str).str.replace(r"[./_]", "-", regex=True)
-
-            # Parse with both dayfirst modes
-            parsed_dayfirst = pd.to_datetime(clean_dates, errors="coerce", dayfirst=True)
-            parsed_monthfirst = pd.to_datetime(clean_dates, errors="coerce", dayfirst=False)
-
-            # Compare — if more than ~25% differ, we’ll warn
-            mismatch = (parsed_dayfirst != parsed_monthfirst) & parsed_dayfirst.notna() & parsed_monthfirst.notna()
-            mismatch_rate = mismatch.mean() if len(mismatch) > 0 else 0
-
-            if mismatch_rate > 0.25:
-                suspect_files.append(f"{file} (possible MM-DD-YYYY format)")
-
-        # Keep the data
-        df["Competition"] = df.get("Venue", "") + " - " + df.get("Date", "")
+        # keep original Date column (string) for fallback
+        df["OriginalDate"] = df.get("Date", "")
         all_data.append(df)
-
-# Warn if any suspicious files found
-if suspect_files:
-    st.warning(
-        "⚠️ The following files might be using **MM-DD-YYYY** instead of **DD-MM-YYYY**:\n\n"
-        + "\n".join(f"- {f}" for f in suspect_files)
-    )
 
 if all_data:
     full_df = pd.concat(all_data, ignore_index=True)
@@ -68,7 +45,7 @@ if all_data:
                     break
 
         # Create Date_str for display in dd-mm-yyyy; fallback to original string if parsing failed
-        full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d-%b-%Y")
+        full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d-%m-%Y")
         full_df.loc[full_df["Date_str"].isna(), "Date_str"] = full_df["OriginalDate"].astype(str)
 
     else:
@@ -157,5 +134,3 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
-
-
