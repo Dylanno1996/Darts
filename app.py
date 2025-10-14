@@ -101,6 +101,14 @@ if all_data:
             top_total_180s = int(max_total_row["180s"])
             st.markdown(f"🎯 **Most 180s across all competitions:** {top_total_player} — {top_total_180s}")
 
+            # --- NEW: Most 180s at a single tournament ---
+            tournament_totals = comp_180s.groupby("Competition")["180s"].sum().reset_index()
+            if not tournament_totals.empty:
+                top_tournament_row = tournament_totals.loc[tournament_totals["180s"].idxmax()]
+                top_tournament = top_tournament_row["Competition"]
+                top_tournament_180s = int(top_tournament_row["180s"])
+                st.markdown(f"📍 **Most 180s at a single tournament:** {top_tournament} — {top_tournament_180s}")
+
         # Filter rows for the selected competition
         comp_df = full_df[full_df["Competition"] == selected_comp].copy()
 
@@ -141,5 +149,6 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
