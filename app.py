@@ -129,13 +129,14 @@ if all_data:
         # Rename columns for display
         player_stats.rename(columns={
             "140_179": "140+",
-            "100_139": "100+"})
+            "100_139": "100+"
+        },inplace=True)
 
         # Calculate total 180s across ALL players in this competition (before slicing to top 5)
         total_180s = int(player_stats["180s"].sum()) if not player_stats.empty else 0
 
         # Sort by 180s first, then 140-179, then 100-139 (desc)
-        player_stats = player_stats.sort_values(by=["180s", "140_179", "100_139"], ascending=[False, False, False])
+        player_stats = player_stats.sort_values(by=["180s", "140+", "100+"], ascending=[False, False, False])
 
         # Keep top 5 for display
         top5_stats = player_stats.head(5).reset_index(drop=True)
@@ -149,15 +150,3 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
-
-
-
-
-
-
-
-
-
-
-
-
