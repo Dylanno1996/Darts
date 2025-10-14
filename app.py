@@ -45,7 +45,7 @@ if all_data:
                     break
 
         # Create Date_str for display in dd-mm-yyyy; fallback to original string if parsing failed
-        full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d-%m-%Y")
+        full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d-%b-%Y")
         full_df.loc[full_df["Date_str"].isna(), "Date_str"] = full_df["OriginalDate"].astype(str)
 
     else:
@@ -134,3 +134,4 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
