@@ -17,6 +17,21 @@ for file in os.listdir(data_folder):
 if all_data:
     full_df = pd.concat(all_data, ignore_index=True)
 
+    # --- Normalize date format ---
+    if "Date" in full_df.columns:
+        # Try to parse all date formats automatically
+        full_df["Date"] = pd.to_datetime(full_df["Date"], errors="coerce", dayfirst=True)
+        # Remove rows where date couldn't be parsed (optional)
+        full_df = full_df.dropna(subset=["Date"])
+        # Format date to a consistent string (e.g. 21/03/2025)
+        full_df["Date_str"] = full_df["Date"].dt.strftime("%d/%m/%Y")
+
+    # Create unified Competition column
+    full_df["Competition"] = full_df["Venue"] + " - " + full_df["Date_str"]
+
+    # --- Sort competitions by date (newest → oldest) ---
+    full_df = full_df.sort_values("Date", ascending=False)
+
     # Identify throw columns dynamically
     throw_cols = [col for col in full_df.columns if col.startswith("Throw_")]
 
@@ -46,8 +61,12 @@ if all_data:
 
     if "Player" in full_df.columns and throw_cols:
         # Dropdown for competition selection
-        competitions = full_df["Competition"].unique()
-        selected_comp = st.selectbox("Select a competition", competitions)
+        competitions = full_df[["Competition", "Date"]].drop_duplicates().sort_values("Date", ascending=False)
+        selected_comp = st.selectbox(
+            "Select a competition",
+            competitions["Competition"].tolist()
+        )
+
 
         comp_df = full_df[full_df["Competition"] == selected_comp]
 
@@ -89,6 +108,7 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
 
