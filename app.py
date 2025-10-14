@@ -126,6 +126,11 @@ if all_data:
         # Group by player and sum their counts
         player_stats = comp_df.groupby("Player")[["180s", "140_179", "100_139"]].sum().reset_index()
 
+        # Rename columns for display
+        player_stats.rename(columns={
+            "140_179": "140+",
+            "100_139": "100+"
+
         # Calculate total 180s across ALL players in this competition (before slicing to top 5)
         total_180s = int(player_stats["180s"].sum()) if not player_stats.empty else 0
 
@@ -144,6 +149,7 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
 
 
 
