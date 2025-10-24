@@ -19,14 +19,28 @@ if all_data:
     full_df = pd.concat(all_data, ignore_index=True)
 
     if "OriginalDate" in full_df.columns:
-        # Explicitly parse as DD/MM/YYYY format (British/European style)
-        full_df["ParsedDate"] = pd.to_datetime(
-            full_df["OriginalDate"], 
-            format="%d/%m/%Y",  # Day/Month/Year
-            errors="coerce"
-        )
-    
-        #Create Date_str for display in dd-mmm-yyyy
+        # Try multiple date formats in order
+        full_df["ParsedDate"] = pd.NaT  # Start with all NaT
+        
+        # List of formats to try (add more if needed)
+        date_formats = [
+            "%d/%m/%Y",   # 03/10/2025
+            "%d-%m-%Y",   # 03-10-2025
+            "%d.%m.%Y",   # 03.10.2025
+            "%d %m %Y",   # 03 10 2025
+        ]
+        
+        for fmt in date_formats:
+            # Only parse rows that haven't been parsed yet
+            mask_unparsed = full_df["ParsedDate"].isna()
+            if mask_unparsed.any():
+                full_df.loc[mask_unparsed, "ParsedDate"] = pd.to_datetime(
+                    full_df.loc[mask_unparsed, "OriginalDate"],
+                    format=fmt,
+                    errors="coerce"
+                )
+        
+        # Create Date_str for display in dd-mmm-yyyy
         full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d-%b-%Y")
         full_df.loc[full_df["Date_str"].isna(), "Date_str"] = full_df["OriginalDate"].astype(str)
         
@@ -132,4 +146,3 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
-
