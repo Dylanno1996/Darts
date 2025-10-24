@@ -120,13 +120,13 @@ if page == "🎯 180s Stats":
 
         st.markdown("---")
         st.markdown("🏆 **Most 180s in a Single Competition:**")
-        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{max_180s} — {top_player} ({top_comp})")
+        st.markdown(f"#### &nbsp;&nbsp;&nbsp;&nbsp;{max_180s} — {top_player} ({top_comp})")
 
         st.markdown("🎯 **Most 180s Across All Competitions:**")
-        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{top_total_180s} — {top_total_player}")
+        st.markdown(f"#### &nbsp;&nbsp;&nbsp;&nbsp;{top_total_180s} — {top_total_player}")
 
         st.markdown("📍 **Most 180s at a Single Tournament:**")
-        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{top_tournament_180s} — {top_tournament}")
+        st.markdown(f"#### &nbsp;&nbsp;&nbsp;&nbsp;{top_tournament_180s} — {top_tournament}")
 
 
 # ==================================================================
@@ -179,6 +179,7 @@ elif page == "🎣 Checkout Stats":
         st.dataframe(max_170_df, hide_index=True)
     else:
         st.info("No 170 checkouts recorded this season.")
+
 
 
 
