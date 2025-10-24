@@ -88,14 +88,16 @@ if all_data:
             max_180s = int(max_180_row["180s"])
             top_player = max_180_row["Player"]
             top_comp = max_180_row["Competition"]
-            st.markdown(f"🏆 **Most 180s in a single competition:** {top_player} — {max_180s} ({top_comp})")
+            st.markdown(f"🏆 **Most 180s in a single competition:**")
+            st.markdown(f"## &nbsp;&nbsp;&nbsp;&nbsp;{top_player} — {max_180s} ({top_comp})")
 
             # --- NEW: Find the player with the most 180s across the entire tournament ---
             total_180s_all = comp_180s.groupby("Player")["180s"].sum().reset_index()
             max_total_row = total_180s_all.loc[total_180s_all["180s"].idxmax()]
             top_total_player = max_total_row["Player"]
             top_total_180s = int(max_total_row["180s"])
-            st.markdown(f"🎯 **Most 180s across all competitions:** {top_total_player} — {top_total_180s}")
+            st.markdown(f"🎯 **Most 180s across all competitions:**")
+            st.markdown(f"## &nbsp;&nbsp;&nbsp;&nbsp;{top_total_player} — {top_total_180s}")
 
             # --- NEW: Most 180s at a single tournament ---
             tournament_totals = comp_180s.groupby("Competition")["180s"].sum().reset_index()
@@ -103,7 +105,8 @@ if all_data:
                 top_tournament_row = tournament_totals.loc[tournament_totals["180s"].idxmax()]
                 top_tournament = top_tournament_row["Competition"]
                 top_tournament_180s = int(top_tournament_row["180s"])
-                st.markdown(f"📍 **Most 180s at a single tournament:** {top_tournament} - {top_tournament_180s} ")
+                st.markdown(f"📍 **Most 180s at a single tournament:**")
+                st.markdown(f"## &nbsp;&nbsp;&nbsp;&nbsp;{top_tournament} - {top_tournament_180s}")
 
         # Filter rows for the selected competition
         comp_df = full_df[full_df["Competition"] == selected_comp].copy()
@@ -146,3 +149,4 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
