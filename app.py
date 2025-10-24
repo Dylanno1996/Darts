@@ -18,36 +18,18 @@ for file in os.listdir(data_folder):
 if all_data:
     full_df = pd.concat(all_data, ignore_index=True)
 
-    # --- Normalize and clean date formats safely ---
     if "OriginalDate" in full_df.columns:
-        # Try automatic parsing (assume day-first for ambiguous d/m)
-        full_df["ParsedDate"] = pd.to_datetime(full_df["OriginalDate"], errors="coerce", dayfirst=True)
-
-        # For any unparsed dates, try a second pass assuming month-first (e.g. MM-DD-YYYY)
-        mask_unparsed = full_df["ParsedDate"].isna()
-        if mask_unparsed.any():
-            full_df.loc[mask_unparsed, "ParsedDate"] = pd.to_datetime(
-                full_df.loc[mask_unparsed, "OriginalDate"], errors="coerce", dayfirst=False
-            )
-
-        # If still unparsed, try some common explicit formats
-        mask_unparsed = full_df["ParsedDate"].isna()
-        if mask_unparsed.any():
-            for fmt in ("%d-%m-%Y", "%d/%m/%Y", "%Y-%m-%d", "%d %b %Y", "%d %B %Y"):
-                try:
-                    full_df.loc[mask_unparsed, "ParsedDate"] = pd.to_datetime(
-                        full_df.loc[mask_unparsed, "OriginalDate"], format=fmt, errors="coerce"
-                    )
-                except Exception:
-                    pass
-                mask_unparsed = full_df["ParsedDate"].isna()
-                if not mask_unparsed.any():
-                    break
-
-        # Create Date_str for display in dd-mm-yyyy; fallback to original string if parsing failed
+        # Explicitly parse as DD/MM/YYYY format (British/European style)
+        full_df["ParsedDate"] = pd.to_datetime(
+            full_df["OriginalDate"], 
+            format="%d/%m/%Y",  # Day/Month/Year
+            errors="coerce"
+        )
+    
+        #Create Date_str for display in dd-mmm-yyyy
         full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d-%b-%Y")
         full_df.loc[full_df["Date_str"].isna(), "Date_str"] = full_df["OriginalDate"].astype(str)
-
+        
     else:
         # if there was no Date column, create placeholders
         full_df["ParsedDate"] = pd.NaT
@@ -150,3 +132,4 @@ if all_data:
         st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
 else:
     st.warning("No CSV files found in the data folder.")
+
