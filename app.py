@@ -65,7 +65,7 @@ if not ("Player" in full_df.columns and throw_cols):
     st.stop()
 
 # --- Navigation Sidebar ---
-page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "💥 Checkout Stats"])
+page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats"])
 
 # ==================================================================
 # 🎯 PAGE 1 — 180s Stats
@@ -132,9 +132,9 @@ if page == "🎯 180s Stats":
 
 
 # ==================================================================
-# 💥 PAGE 2 — Checkout Stats
+# 🎣 PAGE 2 — Checkout Stats
 # ==================================================================
-elif page == "💥 Checkout Stats":
+elif page == "🎣 Checkout Stats":
 
     winners_df = full_df[full_df["Result"].str.upper() == "WON"].copy()
 
@@ -170,7 +170,7 @@ elif page == "💥 Checkout Stats":
 
     # --- 170 Checkout Club (all time, not filtered) ---
     st.markdown("---")
-    st.markdown("## 💯 170 Checkout Club")
+    st.markdown("## 🎣 The Big Fish")
 
     max_170_df = winners_df[winners_df["Checkout"] == 170][["Player", "Venue", "ParsedDate"]].copy()
     max_170_df = max_170_df.sort_values("ParsedDate", ascending=False)
@@ -181,3 +181,4 @@ elif page == "💥 Checkout Stats":
         st.dataframe(max_170_df, hide_index=True)
     else:
         st.info("No 170 checkouts recorded this season.")
+
