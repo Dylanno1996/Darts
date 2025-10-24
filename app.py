@@ -77,39 +77,6 @@ if page == "🎯 180s Stats":
         lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
     )
 
-    comp_180s = full_df.groupby(["Competition", "Player"])["180s"].sum().reset_index()
-
-    if not comp_180s.empty:
-        # Highest in single competition
-        max_180_row = comp_180s.loc[comp_180s["180s"].idxmax()]
-        max_180s = int(max_180_row["180s"])
-        top_player = max_180_row["Player"]
-        top_comp = max_180_row["Competition"]
-
-        # Most across all competitions
-        total_180s_all = comp_180s.groupby("Player")["180s"].sum().reset_index()
-        max_total_row = total_180s_all.loc[total_180s_all["180s"].idxmax()]
-        top_total_player = max_total_row["Player"]
-        top_total_180s = int(max_total_row["180s"])
-
-        # Most by tournament total
-        tournament_totals = comp_180s.groupby("Competition")["180s"].sum().reset_index()
-        top_tournament_row = tournament_totals.loc[tournament_totals["180s"].idxmax()]
-        top_tournament = top_tournament_row["Competition"]
-        top_tournament_180s = int(top_tournament_row["180s"])
-
-        # --- Display vertically (your preferred style) ---
-        st.markdown("## 🎯 180s Highlights")
-        st.markdown("🏆 **Most 180s in a Single Competition:**")
-        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{max_180s} — {top_player} ({top_comp})")
-
-        st.markdown("🎯 **Most 180s Across All Competitions:**")
-        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{top_total_180s} — {top_total_player}")
-
-        st.markdown("📍 **Most 180s at a Single Tournament:**")
-        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{top_tournament_180s} — {top_tournament}")
-
-    # --- Per-competition 180s breakdown ---
     comp_df = full_df[full_df["Competition"] == selected_comp].copy()
     comp_df["180s"] = comp_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
@@ -128,58 +95,85 @@ if page == "🎯 180s Stats":
     player_stats = player_stats.sort_values(by=["180s", "140+", "100+"], ascending=[False, False, False])
     top5_stats = player_stats.head(5).reset_index(drop=True)
 
-    st.subheader(f"Total 180s - {total_180s}")
+    # --- Display main table right below dropdown ---
+    st.subheader(f"Top 5 Players — {selected_comp}")
     st.dataframe(top5_stats, hide_index=True)
+    st.caption(f"Total 180s in this competition: {total_180s}")
+
+    # --- 180s Highlights at the bottom ---
+    comp_180s = full_df.groupby(["Competition", "Player"])["180s"].sum().reset_index()
+
+    if not comp_180s.empty:
+        max_180_row = comp_180s.loc[comp_180s["180s"].idxmax()]
+        max_180s = int(max_180_row["180s"])
+        top_player = max_180_row["Player"]
+        top_comp = max_180_row["Competition"]
+
+        total_180s_all = comp_180s.groupby("Player")["180s"].sum().reset_index()
+        max_total_row = total_180s_all.loc[total_180s_all["180s"].idxmax()]
+        top_total_player = max_total_row["Player"]
+        top_total_180s = int(max_total_row["180s"])
+
+        tournament_totals = comp_180s.groupby("Competition")["180s"].sum().reset_index()
+        top_tournament_row = tournament_totals.loc[tournament_totals["180s"].idxmax()]
+        top_tournament = top_tournament_row["Competition"]
+        top_tournament_180s = int(top_tournament_row["180s"])
+
+        st.markdown("---")
+        st.markdown("## 🎯 180s Highlights")
+        st.markdown("🏆 **Most 180s in a Single Competition:**")
+        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{max_180s} — {top_player} ({top_comp})")
+
+        st.markdown("🎯 **Most 180s Across All Competitions:**")
+        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{top_total_180s} — {top_total_player}")
+
+        st.markdown("📍 **Most 180s at a Single Tournament:**")
+        st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{top_tournament_180s} — {top_tournament}")
+
 
 # ==================================================================
 # 💥 PAGE 2 — Checkout Stats
 # ==================================================================
 elif page == "💥 Checkout Stats":
 
-    if throw_cols:
-        winners_df = full_df[full_df["Result"].str.upper() == "WON"].copy()
+    winners_df = full_df[full_df["Result"].str.upper() == "WON"].copy()
 
-        if not winners_df.empty:
-            # Get last non-zero throw (the checkout)
-            def get_checkout(row):
-                throws = [score for score in row[throw_cols] if pd.notna(score) and score > 0]
-                return throws[-1] if len(throws) > 0 else None
+    if winners_df.empty:
+        st.info("No winning legs found — cannot calculate checkouts.")
+        st.stop()
 
-            winners_df["Checkout"] = winners_df.apply(get_checkout, axis=1)
-            winners_df = winners_df.dropna(subset=["Checkout"])
-            winners_df["Checkout"] = pd.to_numeric(winners_df["Checkout"], errors="coerce")
+    # Extract last throw as checkout
+    def get_checkout(row):
+        throws = [score for score in row[throw_cols] if pd.notna(score) and score > 0]
+        return throws[-1] if len(throws) > 0 else None
 
-            if not winners_df.empty:
-                max_checkout_row = winners_df.loc[winners_df["Checkout"].idxmax()]
-                highest_checkout = int(max_checkout_row["Checkout"])
-                highest_player = max_checkout_row["Player"]
-                highest_comp = max_checkout_row["Competition"]
+    winners_df["Checkout"] = winners_df.apply(get_checkout, axis=1)
+    winners_df = winners_df.dropna(subset=["Checkout"])
+    winners_df["Checkout"] = pd.to_numeric(winners_df["Checkout"], errors="coerce")
 
-                # Competition-level
-                comp_winners = winners_df[winners_df["Competition"] == selected_comp]
-                if not comp_winners.empty:
-                    max_checkout_row_comp = comp_winners.loc[comp_winners["Checkout"].idxmax()]
-                    highest_checkout_comp = int(max_checkout_row_comp["Checkout"])
-                    highest_player_comp = max_checkout_row_comp["Player"]
+    comp_winners = winners_df[winners_df["Competition"] == selected_comp].copy()
 
-                    # --- Display vertically (like 180s) ---
-                    st.markdown("## 💥 Checkout Highlights")
-                    st.markdown("💥 **Highest Checkout (Overall):**")
-                    st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{highest_checkout} — {highest_player} ({highest_comp})")
+    if comp_winners.empty:
+        st.info(f"No winning legs found for {selected_comp}.")
+        st.stop()
 
-                    st.markdown(f"💥 **Highest Checkout in {selected_comp}:**")
-                    st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{highest_checkout_comp} — {highest_player_comp}")
+    # --- Main Table (top 5 checkouts in selected comp) ---
+    top5_checkouts = (
+        comp_winners[["Player", "Checkout"]]
+        .sort_values("Checkout", ascending=False)
+        .head(5)
+        .reset_index(drop=True)
+    )
 
-                    # --- Top 5 checkouts in selected competition ---
-                    top5_checkouts = (
-                        comp_winners[["Player", "Checkout"]]
-                        .sort_values("Checkout", ascending=False)
-                        .head(5)
-                        .reset_index(drop=True)
-                    )
-                    st.subheader("Top 5 Checkouts")
-                    st.dataframe(top5_checkouts, hide_index=True)
-                else:
-                    st.info("No winning legs found in this competition.")
-        else:
-            st.info("No winning legs found — cannot calculate checkouts.")
+    st.subheader(f"Top 5 Checkouts — {selected_comp}")
+    st.dataframe(top5_checkouts, hide_index=True)
+
+    # --- Show players who hit an exact 170 finish ---
+    max_170_df = comp_winners[comp_winners["Checkout"] == 170][["Player", "Competition", "Leg"]]
+    st.markdown("---")
+    st.markdown("## 💯 170 Checkout Club")
+
+    if not max_170_df.empty:
+        st.dataframe(max_170_df, hide_index=True)
+    else:
+        st.info("No 170 checkouts recorded in this competition.")
