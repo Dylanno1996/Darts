@@ -96,9 +96,9 @@ if page == "🎯 180s Stats":
     top5_stats = player_stats.head(5).reset_index(drop=True)
 
     # --- Display main table right below dropdown ---
-    st.subheader(f"Top 5 Players — {selected_comp}")
+    st.subheader(f"Most 180s")
     st.dataframe(top5_stats, hide_index=True)
-    st.caption(f"Total 180s in this competition: {total_180s}")
+    st.subheader(f"Total 180s: {total_180s}")
 
     # --- 180s Highlights at the bottom ---
     comp_180s = full_df.groupby(["Competition", "Player"])["180s"].sum().reset_index()
@@ -120,7 +120,6 @@ if page == "🎯 180s Stats":
         top_tournament_180s = int(top_tournament_row["180s"])
 
         st.markdown("---")
-        st.markdown("## 🎯 180s Highlights")
         st.markdown("🏆 **Most 180s in a Single Competition:**")
         st.markdown(f"### &nbsp;&nbsp;&nbsp;&nbsp;{max_180s} — {top_player} ({top_comp})")
 
@@ -181,4 +180,5 @@ elif page == "🎣 Checkout Stats":
         st.dataframe(max_170_df, hide_index=True)
     else:
         st.info("No 170 checkouts recorded this season.")
+
 
