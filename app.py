@@ -163,7 +163,7 @@ elif page == "🎣 Checkout Stats":
         .reset_index(drop=True)
     )
 
-    st.subheader(f"Top 5 Checkouts — {selected_comp}")
+    st.subheader(f"Highest Checkouts")
     st.dataframe(top5_checkouts, hide_index=True)
 
     # --- 170 Checkout Club (all time, not filtered) ---
@@ -179,6 +179,7 @@ elif page == "🎣 Checkout Stats":
         st.dataframe(max_170_df, hide_index=True)
     else:
         st.info("No 170 checkouts recorded this season.")
+
 
 
 
