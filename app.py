@@ -168,12 +168,16 @@ elif page == "💥 Checkout Stats":
     st.subheader(f"Top 5 Checkouts — {selected_comp}")
     st.dataframe(top5_checkouts, hide_index=True)
 
-    # --- Show players who hit an exact 170 finish ---
-    max_170_df = comp_winners[comp_winners["Checkout"] == 170][["Player", "Competition", "Leg"]]
+    # --- 170 Checkout Club (all time, not filtered) ---
     st.markdown("---")
     st.markdown("## 💯 170 Checkout Club")
+
+    max_170_df = winners_df[winners_df["Checkout"] == 170][["Player", "Venue", "ParsedDate"]].copy()
+    max_170_df = max_170_df.sort_values("ParsedDate", ascending=False)
+    max_170_df["Date"] = max_170_df["ParsedDate"].dt.strftime("%d-%b-%Y")
+    max_170_df = max_170_df[["Player", "Venue", "Date"]]
 
     if not max_170_df.empty:
         st.dataframe(max_170_df, hide_index=True)
     else:
-        st.info("No 170 checkouts recorded in this competition.")
+        st.info("No 170 checkouts recorded this season.")
