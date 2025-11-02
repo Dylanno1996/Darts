@@ -65,7 +65,7 @@ if not ("Player" in full_df.columns and throw_cols):
     st.stop()
 
 # --- Navigation Sidebar ---
-page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats", "🚀 Fastest Legs"])
+page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats", "🏁 Lowest Legs"])
 
 # ==================================================================
 # 🎯 PAGE 1 — 180s Stats
@@ -181,21 +181,23 @@ elif page == "🎣 Checkout Stats":
         st.info("No 170 checkouts recorded this season.")
 
 # ==================================================================
-# 🚀 PAGE 3 — Fastest Legs
+# 🏁 PAGE 3 — Lowest Legs
 # ==================================================================
-elif page == "🚀 Fastest Legs":
+elif page == "🏁 Lowest Legs":
 
-    # Consider only winning legs
+    # Only consider winning legs
     winners_df = full_df[full_df["Result"].str.upper() == "WON"].copy()
 
     if winners_df.empty:
-        st.info("No winning legs found — cannot calculate fastest legs.")
+        st.info("No winning legs found — cannot calculate lowest legs.")
         st.stop()
 
-    # Count how many throws were made (non-empty throw columns)
-    winners_df["NumThrows"] = winners_df[throw_cols].apply(
-        lambda row: sum(pd.notna(row) & (row > 0)), axis=1
-    )
+    # Ensure Total Darts is numeric
+    if "Total Darts" not in winners_df.columns:
+        st.error("CSV files must include a 'Total Darts' column for this page.")
+        st.stop()
+
+    winners_df["Total Darts"] = pd.to_numeric(winners_df["Total Darts"], errors="coerce")
 
     # Extract last throw score for tie-breaking
     winners_df["LastScore"] = winners_df[throw_cols].apply(
@@ -203,33 +205,35 @@ elif page == "🚀 Fastest Legs":
         axis=1
     )
 
+    # Filter to the selected competition
     comp_winners = winners_df[winners_df["Competition"] == selected_comp].copy()
 
     if comp_winners.empty:
         st.info(f"No winning legs found for {selected_comp}.")
         st.stop()
 
-    # Sort by least throws, then highest last score
-    fastest_legs = comp_winners.sort_values(
-        by=["NumThrows", "LastScore"], ascending=[True, False]
+    # Sort by fewest darts, then highest last score (tie-breaker)
+    lowest_legs = comp_winners.sort_values(
+        by=["Total Darts", "LastScore"], ascending=[True, False]
     ).reset_index(drop=True)
 
-    # Show top 5 fastest legs
-    top5_fastest = fastest_legs[["Player", "NumThrows", "LastScore"]].head(5)
+    # Show top 5 lowest legs
+    top5_lowest = lowest_legs[["Player", "Total Darts", "LastScore"]].head(5)
+    top5_lowest.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
 
-    st.subheader(f"Fastest Legs — {selected_comp}")
-    st.dataframe(top5_fastest, hide_index=True)
+    st.subheader(f"Lowest Legs — {selected_comp}")
+    st.dataframe(top5_lowest, hide_index=True)
 
-    # Highlight the fastest leg across all competitions
+    # Highlight the lowest leg overall
     st.markdown("---")
-    st.markdown("🏆 **Fastest Leg Overall:**")
+    st.markdown("🏆 **Lowest Leg Across All Competitions:**")
 
-    all_fastest = winners_df.sort_values(
-        by=["NumThrows", "LastScore"], ascending=[True, False]
+    all_lowest = winners_df.sort_values(
+        by=["Total Darts", "LastScore"], ascending=[True, False]
     ).head(1)
 
-    if not all_fastest.empty:
-        row = all_fastest.iloc[0]
+    if not all_lowest.empty:
+        row = all_lowest.iloc[0]
         st.markdown(
-            f"#### {int(row['NumThrows'])} darts — {row['Player']} ({row['Competition']})"
+            f"#### {int(row['Total Darts'])} darts — {row['Player']} ({row['Competition']})"
         )
