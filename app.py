@@ -181,9 +181,12 @@ elif page == "🏁 Lowest Legs":
         )
 
         all_lowest = winners_overall.sort_values(["Total Darts","LastScore"], ascending=[True,False])
-        if data_mode == "🏆 Competitions":
-            top5_overall = all_lowest[["Player","Venue","Date_str","Total Darts","LastScore"]].head(5)
-            top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout","Date_str":"Date"}, inplace=True)
+        if data_mode == "🏅 League Games":
+            # Safely convert Season to Int64
+            all_lowest["Season"] = pd.to_numeric(all_lowest["Season"], errors="coerce").astype("Int64")
+            top5_overall = all_lowest[["Player","Division","Season","Total Darts","LastScore"]].head(5)
+            top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
+
         else:
             # Convert Season to integer
             all_lowest["Season"] = all_lowest["Season"].astype("Int64")
@@ -191,3 +194,4 @@ elif page == "🏁 Lowest Legs":
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
 
         st.dataframe(top5_overall, hide_index=True)
+
