@@ -217,23 +217,31 @@ elif page == "🏁 Lowest Legs":
         by=["Total Darts", "LastScore"], ascending=[True, False]
     ).reset_index(drop=True)
 
-    # Show top 5 lowest legs
+    # --- Top 5 lowest legs for selected competition ---
     top5_lowest = lowest_legs[["Player", "Total Darts", "LastScore"]].head(5)
-    top5_lowest.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
+    top5_lowest.rename(
+        columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"},
+        inplace=True
+    )
 
     st.subheader(f"Lowest Legs — {selected_comp}")
     st.dataframe(top5_lowest, hide_index=True)
 
-    # Highlight the lowest leg overall
+    # --- Overall Top 5 Lowest Legs Across All Competitions ---
     st.markdown("---")
-    st.markdown("🏆 **Lowest Leg Across All Competitions:**")
+    st.markdown("🏆 **Top 5 Lowest Legs Across All Competitions:**")
 
     all_lowest = winners_df.sort_values(
         by=["Total Darts", "LastScore"], ascending=[True, False]
-    ).head(1)
+    ).reset_index(drop=True)
 
-    if not all_lowest.empty:
-        row = all_lowest.iloc[0]
-        st.markdown(
-            f"#### {int(row['Total Darts'])} darts — {row['Player']} ({row['Competition']})"
-        )
+    top5_overall = all_lowest[["Player", "Competition", "Total Darts", "LastScore"]].head(5)
+    top5_overall.rename(
+        columns={
+            "Total Darts": "Darts Thrown",
+            "LastScore": "Checkout",
+        },
+        inplace=True,
+    )
+
+    st.dataframe(top5_overall, hide_index=True)
