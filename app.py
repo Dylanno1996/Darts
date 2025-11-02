@@ -3,17 +3,26 @@ import pandas as pd
 import os
 
 st.set_page_config(page_title="IDL GP Stats", layout="centered")
-
 st.title("IDL GP Stats")
 
 # --- Load all CSV data ---
 data_folder = "data"
 all_data = []
 
+def detect_data_type(df):
+    """Determine if the CSV is a Competition or League file."""
+    has_division = "Division" in df.columns and df["Division"].notna().any()
+    has_date = "Date" in df.columns and df["Date"].notna().any()
+    if has_division and not has_date:
+        return "League"
+    else:
+        return "Competition"
+
 for file in os.listdir(data_folder):
     if file.endswith(".csv"):
         df = pd.read_csv(os.path.join(data_folder, file))
         df["OriginalDate"] = df.get("Date", "")
+        df["DataType"] = detect_data_type(df)
         all_data.append(df)
 
 if not all_data:
@@ -23,8 +32,8 @@ if not all_data:
 full_df = pd.concat(all_data, ignore_index=True)
 
 # --- Parse Date Column ---
+full_df["ParsedDate"] = pd.NaT
 if "OriginalDate" in full_df.columns:
-    full_df["ParsedDate"] = pd.NaT
     date_formats = ["%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%d %m %Y"]
     for fmt in date_formats:
         mask_unparsed = full_df["ParsedDate"].isna()
@@ -34,214 +43,135 @@ if "OriginalDate" in full_df.columns:
                 format=fmt,
                 errors="coerce"
             )
-    full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d-%b-%Y")
-    full_df.loc[full_df["Date_str"].isna(), "Date_str"] = full_df["OriginalDate"].astype(str)
-else:
-    full_df["ParsedDate"] = pd.NaT
-    full_df["Date_str"] = ""
-
-# --- Create Competition Label ---
-full_df["Venue"] = full_df["Venue"].astype(str)
-full_df["Competition"] = full_df["Venue"] + " - " + full_df["Date_str"]
-
-# --- Sort competitions ---
-full_df = full_df.sort_values("ParsedDate", ascending=False, na_position="last")
-competitions_df = (
-    full_df[["Competition", "ParsedDate"]]
-    .drop_duplicates()
-    .sort_values("ParsedDate", ascending=False, na_position="last")
-    .reset_index(drop=True)
-)
-
-selected_comp = st.selectbox("Select a competition", competitions_df["Competition"].tolist())
+full_df["Date_str"] = full_df["ParsedDate"].dt.strftime("%d-%b-%Y")
+full_df.loc[full_df["Date_str"].isna(), "Date_str"] = full_df["OriginalDate"].astype(str)
 
 # --- Identify throw columns dynamically ---
 throw_cols = [col for col in full_df.columns if col.startswith("Throw_")]
 for c in throw_cols:
     full_df[c] = pd.to_numeric(full_df[c], errors="coerce")
 
-if not ("Player" in full_df.columns and throw_cols):
+if "Player" not in full_df.columns or not throw_cols:
     st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
     st.stop()
 
-# --- Navigation Sidebar ---
+# --- Sidebar navigation ---
+data_mode = st.sidebar.radio("📁 Select Data Type", ["🏆 Competitions", "🏅 League Games"])
 page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats", "🏁 Lowest Legs"])
 
-# ==================================================================
-# 🎯 PAGE 1 — 180s Stats
-# ==================================================================
+# --- Filter dataset based on selection ---
+if data_mode == "🏆 Competitions":
+    active_df = full_df[full_df["DataType"] == "Competition"].copy()
+    active_df["Venue"] = active_df["Venue"].astype(str)
+    active_df["Competition"] = active_df["Venue"] + " - " + active_df["Date_str"]
+
+    options_df = (
+        active_df[["Competition", "ParsedDate"]]
+        .drop_duplicates()
+        .sort_values("ParsedDate", ascending=False, na_position="last")
+        .reset_index(drop=True)
+    )
+    selected_label = st.selectbox("Select a competition", options_df["Competition"].tolist())
+    filtered_df = active_df[active_df["Competition"] == selected_label].copy()
+
+else:
+    active_df = full_df[full_df["DataType"] == "League"].copy()
+    active_df["Division"] = active_df["Division"].astype(str)
+    active_df["Season"] = active_df["Season"].astype(str)
+    active_df["LeagueLabel"] = active_df["Division"] + " - " + active_df["Season"]
+
+    options_df = (
+        active_df[["LeagueLabel", "Division", "Season"]]
+        .drop_duplicates()
+        .reset_index(drop=True)
+    )
+    selected_label = st.selectbox("Select a league/season", options_df["LeagueLabel"].tolist())
+    filtered_df = active_df[active_df["LeagueLabel"] == selected_label].copy()
+
+# --- 180s Stats Page ---
 if page == "🎯 180s Stats":
-
-    # Calculate 180s
-    full_df["180s"] = full_df[throw_cols].apply(
+    filtered_df["180s"] = filtered_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
     )
-
-    comp_df = full_df[full_df["Competition"] == selected_comp].copy()
-    comp_df["180s"] = comp_df[throw_cols].apply(
-        lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
-    )
-    comp_df["140_179"] = comp_df[throw_cols].apply(
+    filtered_df["140_179"] = filtered_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and 140 <= score <= 179), axis=1
     )
-    comp_df["100_139"] = comp_df[throw_cols].apply(
+    filtered_df["100_139"] = filtered_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and 100 <= score <= 139), axis=1
     )
 
-    player_stats = comp_df.groupby("Player")[["180s", "140_179", "100_139"]].sum().reset_index()
+    player_stats = filtered_df.groupby("Player")[["180s", "140_179", "100_139"]].sum().reset_index()
     player_stats.rename(columns={"140_179": "140+", "100_139": "100+"}, inplace=True)
-
     total_180s = int(player_stats["180s"].sum()) if not player_stats.empty else 0
     player_stats = player_stats.sort_values(by=["180s", "140+", "100+"], ascending=[False, False, False])
     top5_stats = player_stats.head(5).reset_index(drop=True)
 
-    # --- Display main table right below dropdown ---
     st.subheader(f"Total 180s - {total_180s}")
     st.dataframe(top5_stats, hide_index=True)
 
-    # --- 180s Highlights at the bottom ---
-    comp_180s = full_df.groupby(["Competition", "Player"])["180s"].sum().reset_index()
-
+    st.markdown("---")
+    comp_180s = filtered_df.groupby(["Player"])["180s"].sum().reset_index()
     if not comp_180s.empty:
         max_180_row = comp_180s.loc[comp_180s["180s"].idxmax()]
-        max_180s = int(max_180_row["180s"])
-        top_player = max_180_row["Player"]
-        top_comp = max_180_row["Competition"]
+        st.markdown(f"🏆 Most 180s: {int(max_180_row['180s'])} — {max_180_row['Player']}")
 
-        total_180s_all = comp_180s.groupby("Player")["180s"].sum().reset_index()
-        max_total_row = total_180s_all.loc[total_180s_all["180s"].idxmax()]
-        top_total_player = max_total_row["Player"]
-        top_total_180s = int(max_total_row["180s"])
-
-        tournament_totals = comp_180s.groupby("Competition")["180s"].sum().reset_index()
-        top_tournament_row = tournament_totals.loc[tournament_totals["180s"].idxmax()]
-        top_tournament = top_tournament_row["Competition"]
-        top_tournament_180s = int(top_tournament_row["180s"])
-
-        st.markdown("---")
-        st.markdown("🏆 **Most 180s in a Single Competition:**")
-        st.markdown(f"#### &nbsp;&nbsp;&nbsp;&nbsp;{max_180s} — {top_player} ({top_comp})")
-
-        st.markdown("🎯 **Most 180s Across All Competitions:**")
-        st.markdown(f"#### &nbsp;&nbsp;&nbsp;&nbsp;{top_total_180s} — {top_total_player}")
-
-        st.markdown("📍 **Most 180s at a Single Tournament:**")
-        st.markdown(f"#### &nbsp;&nbsp;&nbsp;&nbsp;{top_tournament_180s} — {top_tournament}")
-
-
-# ==================================================================
-# 🎣 PAGE 2 — Checkout Stats
-# ==================================================================
+# --- Checkout Stats Page ---
 elif page == "🎣 Checkout Stats":
-
-    winners_df = full_df[full_df["Result"].str.upper() == "WON"].copy()
-
+    winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
     if winners_df.empty:
         st.info("No winning legs found — cannot calculate checkouts.")
         st.stop()
 
-    # Extract last throw as checkout
-    def get_checkout(row):
-        throws = [score for score in row[throw_cols] if pd.notna(score) and score > 0]
-        return throws[-1] if len(throws) > 0 else None
-
-    winners_df["Checkout"] = winners_df.apply(get_checkout, axis=1)
+    winners_df["Checkout"] = winners_df[throw_cols].apply(
+        lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
+        axis=1
+    )
     winners_df = winners_df.dropna(subset=["Checkout"])
     winners_df["Checkout"] = pd.to_numeric(winners_df["Checkout"], errors="coerce")
 
-    comp_winners = winners_df[winners_df["Competition"] == selected_comp].copy()
-
-    if comp_winners.empty:
-        st.info(f"No winning legs found for {selected_comp}.")
-        st.stop()
-
-    # --- Main Table (top 5 checkouts in selected comp) ---
-    top5_checkouts = (
-        comp_winners[["Player", "Checkout"]]
-        .sort_values("Checkout", ascending=False)
-        .head(5)
-        .reset_index(drop=True)
-    )
-
+    top5_checkouts = winners_df.sort_values("Checkout", ascending=False)[["Player", "Checkout"]].head(5)
     st.subheader(f"Highest Checkouts")
     st.dataframe(top5_checkouts, hide_index=True)
 
-    # --- 170 Checkout Club (all time, not filtered) ---
     st.markdown("---")
-    st.markdown("## 🎣 The Big Fish")
-
+    st.markdown("## 🎣 170 Checkout Club")
     max_170_df = winners_df[winners_df["Checkout"] == 170][["Player", "Venue", "ParsedDate"]].copy()
     max_170_df = max_170_df.sort_values("ParsedDate", ascending=False)
     max_170_df["Date"] = max_170_df["ParsedDate"].dt.strftime("%d-%b-%Y")
     max_170_df = max_170_df[["Player", "Venue", "Date"]]
-
     if not max_170_df.empty:
         st.dataframe(max_170_df, hide_index=True)
     else:
-        st.info("No 170 checkouts recorded this season.")
+        st.info("No 170 checkouts recorded.")
 
-# ==================================================================
-# 🏁 PAGE 3 — Lowest Legs
-# ==================================================================
+# --- Lowest Legs Page ---
 elif page == "🏁 Lowest Legs":
-
-    # Only consider winning legs
-    winners_df = full_df[full_df["Result"].str.upper() == "WON"].copy()
-
+    winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
     if winners_df.empty:
         st.info("No winning legs found — cannot calculate lowest legs.")
         st.stop()
 
-    # Ensure Total Darts is numeric
     if "Total Darts" not in winners_df.columns:
         st.error("CSV files must include a 'Total Darts' column for this page.")
         st.stop()
-
     winners_df["Total Darts"] = pd.to_numeric(winners_df["Total Darts"], errors="coerce")
 
-    # Extract last throw score for tie-breaking
     winners_df["LastScore"] = winners_df[throw_cols].apply(
         lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
         axis=1
     )
 
-    # Filter to the selected competition
-    comp_winners = winners_df[winners_df["Competition"] == selected_comp].copy()
-
-    if comp_winners.empty:
-        st.info(f"No winning legs found for {selected_comp}.")
-        st.stop()
-
-    # Sort by fewest darts, then highest last score (tie-breaker)
-    lowest_legs = comp_winners.sort_values(
-        by=["Total Darts", "LastScore"], ascending=[True, False]
-    ).reset_index(drop=True)
-
-    # --- Top 5 lowest legs for selected competition ---
+    # Top 5 for selected competition/league
+    lowest_legs = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
     top5_lowest = lowest_legs[["Player", "Total Darts", "LastScore"]].head(5)
-    top5_lowest.rename(
-        columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"},
-        inplace=True
-    )
-
-    st.subheader(f"Lowest Legs — {selected_comp}")
+    top5_lowest.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
+    st.subheader(f"Lowest Legs — {selected_label}")
     st.dataframe(top5_lowest, hide_index=True)
 
-    # --- Overall Top 5 Lowest Legs Across All Competitions ---
+    # Top 5 across all competitions/leagues
     st.markdown("---")
-    st.markdown("🏆 **Top 5 Lowest Legs Across All Competitions:**")
-
-    all_lowest = winners_df.sort_values(
-        by=["Total Darts", "LastScore"], ascending=[True, False]
-    ).reset_index(drop=True)
-
-    top5_overall = all_lowest[["Player", "Competition", "Total Darts", "LastScore"]].head(5)
-    top5_overall.rename(
-        columns={
-            "Total Darts": "Darts Thrown",
-            "LastScore": "Checkout",
-        },
-        inplace=True,
-    )
-
+    st.markdown("🏆 **Top 5 Lowest Legs Across All Competitions/Leagues:**")
+    all_lowest = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
+    top5_overall = all_lowest[["Player", "Competition" if data_mode=="🏆 Competitions" else "LeagueLabel", "Total Darts", "LastScore"]].head(5)
+    top5_overall.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
     st.dataframe(top5_overall, hide_index=True)
