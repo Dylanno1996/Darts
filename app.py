@@ -65,7 +65,7 @@ if not ("Player" in full_df.columns and throw_cols):
     st.stop()
 
 # --- Navigation Sidebar ---
-page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats"])
+page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats", "🚀 Fastest Legs"])
 
 # ==================================================================
 # 🎯 PAGE 1 — 180s Stats
@@ -180,7 +180,56 @@ elif page == "🎣 Checkout Stats":
     else:
         st.info("No 170 checkouts recorded this season.")
 
+# ==================================================================
+# 🚀 PAGE 3 — Fastest Legs
+# ==================================================================
+elif page == "🚀 Fastest Legs":
 
+    # Consider only winning legs
+    winners_df = full_df[full_df["Result"].str.upper() == "WON"].copy()
 
+    if winners_df.empty:
+        st.info("No winning legs found — cannot calculate fastest legs.")
+        st.stop()
 
+    # Count how many throws were made (non-empty throw columns)
+    winners_df["NumThrows"] = winners_df[throw_cols].apply(
+        lambda row: sum(pd.notna(row) & (row > 0)), axis=1
+    )
 
+    # Extract last throw score for tie-breaking
+    winners_df["LastScore"] = winners_df[throw_cols].apply(
+        lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
+        axis=1
+    )
+
+    comp_winners = winners_df[winners_df["Competition"] == selected_comp].copy()
+
+    if comp_winners.empty:
+        st.info(f"No winning legs found for {selected_comp}.")
+        st.stop()
+
+    # Sort by least throws, then highest last score
+    fastest_legs = comp_winners.sort_values(
+        by=["NumThrows", "LastScore"], ascending=[True, False]
+    ).reset_index(drop=True)
+
+    # Show top 5 fastest legs
+    top5_fastest = fastest_legs[["Player", "NumThrows", "LastScore"]].head(5)
+
+    st.subheader(f"Fastest Legs — {selected_comp}")
+    st.dataframe(top5_fastest, hide_index=True)
+
+    # Highlight the fastest leg across all competitions
+    st.markdown("---")
+    st.markdown("🏆 **Fastest Leg Overall:**")
+
+    all_fastest = winners_df.sort_values(
+        by=["NumThrows", "LastScore"], ascending=[True, False]
+    ).head(1)
+
+    if not all_fastest.empty:
+        row = all_fastest.iloc[0]
+        st.markdown(
+            f"#### {int(row['NumThrows'])} darts — {row['Player']} ({row['Competition']})"
+        )
