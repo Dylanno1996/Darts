@@ -147,43 +147,51 @@ elif page == "🎣 Checkout Stats":
 # --- Lowest Legs Page ---
 elif page == "🏁 Lowest Legs":
     winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
+    winners_overall = active_df[active_df["Result"].str.upper() == "WON"].copy()  # overall
+
     if winners_df.empty:
-        st.info("No winning legs found — cannot calculate lowest legs.")
-        st.stop()
-
-    if "Total Darts" not in winners_df.columns:
-        st.error("CSV files must include a 'Total Darts' column for this page.")
-        st.stop()
-    winners_df["Total Darts"] = pd.to_numeric(winners_df["Total Darts"], errors="coerce")
-
-    winners_df["LastScore"] = winners_df[throw_cols].apply(
-        lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
-        axis=1
-    )
-
-    # --- Top 5 for selected competition/league ---
-    lowest_legs = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
-    
-    if data_mode == "🏆 Competitions":
-        top5_lowest = lowest_legs[["Player", "Venue", "Date_str", "Total Darts", "LastScore"]].head(5)
-        top5_lowest.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout", "Date_str": "Date"}, inplace=True)
+        st.info("No winning legs found for this selection.")
     else:
-        top5_lowest = lowest_legs[["Player", "Division", "Season", "Total Darts", "LastScore"]].head(5)
-        top5_lowest.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
+        # Ensure Total Darts numeric
+        winners_df["Total Darts"] = pd.to_numeric(winners_df["Total Darts"], errors="coerce")
+        winners_df["LastScore"] = winners_df[throw_cols].apply(
+            lambda row: row[pd.notna(row) & (row>0)].iloc[-1] if any(pd.notna(row) & (row>0)) else None,
+            axis=1
+        )
 
-    st.subheader(f"Lowest Legs — {selected_label}")
-    st.dataframe(top5_lowest, hide_index=True)
+        # --- Top 5 for selection ---
+        lowest_legs = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
+        if data_mode == "🏆 Competitions":
+            top5_lowest = lowest_legs[["Player","Venue","Date_str","Total Darts","LastScore"]].head(5)
+            top5_lowest.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout","Date_str":"Date"}, inplace=True)
+        else:
+            top5_lowest = lowest_legs[["Player","Division","Season","Total Darts","LastScore"]].head(5)
+            top5_lowest.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
 
-    # --- Top 5 overall across all competitions/leagues ---
+        st.subheader(f"Lowest Legs — {selected_label}")
+        st.dataframe(top5_lowest, hide_index=True)
+
+    # --- Overall Top 5 ---
     st.markdown("---")
-    st.markdown("🏆 **Top 5 Lowest Legs Across All Competitions/Leagues:**")
-    
-    all_lowest = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
-    if data_mode == "🏆 Competitions":
-        top5_overall = all_lowest[["Player", "Venue", "Date_str", "Total Darts", "LastScore"]].head(5)
-        top5_overall.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout", "Date_str": "Date"}, inplace=True)
+    st.markdown("🏆 **Top 5 Lowest Legs Overall**")
+
+    if winners_overall.empty:
+        st.info("No winning legs found overall.")
     else:
-        top5_overall = all_lowest[["Player", "Division", "Season", "Total Darts", "LastScore"]].head(5)
-        top5_overall.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
-    
-    st.dataframe(top5_overall, hide_index=True)
+        winners_overall["Total Darts"] = pd.to_numeric(winners_overall["Total Darts"], errors="coerce")
+        winners_overall["LastScore"] = winners_overall[throw_cols].apply(
+            lambda row: row[pd.notna(row) & (row>0)].iloc[-1] if any(pd.notna(row) & (row>0)) else None,
+            axis=1
+        )
+
+        all_lowest = winners_overall.sort_values(["Total Darts","LastScore"], ascending=[True,False])
+        if data_mode == "🏆 Competitions":
+            top5_overall = all_lowest[["Player","Venue","Date_str","Total Darts","LastScore"]].head(5)
+            top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout","Date_str":"Date"}, inplace=True)
+        else:
+            top5_overall = all_lowest[["Player","Division","Season","Total Darts","LastScore"]].head(5)
+            top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
+
+        st.dataframe(top5_overall, hide_index=True)
+
+
