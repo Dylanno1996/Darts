@@ -105,24 +105,54 @@ if page == "🎯 180s Stats":
         lambda row: sum(1 for score in row if pd.notna(score) and 100 <= score <= 139), axis=1
     )
 
+    # --- Player stats for selected dropdown ---
     player_stats = filtered_df.groupby("Player")[["180s", "140_179", "100_139"]].sum().reset_index()
     player_stats.rename(columns={"140_179": "140+", "100_139": "100+"}, inplace=True)
     total_180s = int(player_stats["180s"].sum()) if not player_stats.empty else 0
     player_stats = player_stats.sort_values(by=["180s", "140+", "100+"], ascending=[False, False, False])
-    top5_stats = player_stats.head(5).reset_index(drop=True)
+
+    # Add context for League or Competition
+    if data_mode == "🏅 League Games":
+        # Include Division and Season in overall table only
+        top5_stats = player_stats.head(5).reset_index(drop=True)
+    else:
+        # Include Venue and Date only for competitions
+        top5_stats = player_stats.head(5).reset_index(drop=True)
 
     st.subheader(f"Total 180s - {total_180s}")
     st.dataframe(top5_stats, hide_index=True)
 
+    # --- Overall 180s ---
     st.markdown("---")
-    comp_180s = filtered_df.groupby(["Player"])["180s"].sum().reset_index()
-    if not comp_180s.empty:
-        max_180_row = comp_180s.loc[comp_180s["180s"].idxmax()]
-        st.markdown(f"🏆 Most 180s: {int(max_180_row['180s'])} — {max_180_row['Player']}")
+    overall_df = active_df.copy()
+    overall_df["180s"] = overall_df[throw_cols].apply(
+        lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
+    )
+    overall_stats = overall_df.groupby("Player")[["180s"]].sum().reset_index()
+    overall_stats = overall_stats.sort_values("180s", ascending=False).head(5).reset_index(drop=True)
+
+    if data_mode == "🏅 League Games":
+        overall_stats = overall_stats.merge(
+            overall_df[["Player","Division","Season"]].drop_duplicates(),
+            on="Player",
+            how="left"
+        )
+    else:
+        overall_stats = overall_stats.merge(
+            overall_df[["Player","Venue","Date_str"]].drop_duplicates(),
+            on="Player",
+            how="left"
+        )
+        overall_stats.rename(columns={"Date_str":"Date"}, inplace=True)
+
+    st.markdown("🏆 **Top 5 180s Overall**")
+    st.dataframe(overall_stats, hide_index=True)
 
 # --- Checkout Stats Page ---
 elif page == "🎣 Checkout Stats":
     winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
+    winners_overall = active_df[active_df["Result"].str.upper() == "WON"].copy()  # overall
+
     if winners_df.empty:
         st.info("No winning legs found — cannot calculate checkouts.")
         st.stop()
@@ -134,20 +164,38 @@ elif page == "🎣 Checkout Stats":
     winners_df = winners_df.dropna(subset=["Checkout"])
     winners_df["Checkout"] = pd.to_numeric(winners_df["Checkout"], errors="coerce")
 
-    top5_checkouts = winners_df.sort_values("Checkout", ascending=False)[["Player", "Checkout"]].head(5)
+    # --- Top 5 for selected dropdown ---
+    if data_mode == "🏅 League Games":
+        top5_checkouts = winners_df[["Player","Division","Season","Checkout"]]
+    else:
+        top5_checkouts = winners_df[["Player","Venue","Date_str","Checkout"]]
+        top5_checkouts.rename(columns={"Date_str":"Date"}, inplace=True)
+
+    top5_checkouts = top5_checkouts.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
     st.subheader(f"Highest Checkouts")
     st.dataframe(top5_checkouts, hide_index=True)
 
+    # --- Overall Top 5 ---
     st.markdown("---")
-    st.markdown("## 🎣 170 Checkout Club")
-    max_170_df = winners_df[winners_df["Checkout"] == 170][["Player", "Venue", "ParsedDate"]].copy()
-    max_170_df = max_170_df.sort_values("ParsedDate", ascending=False)
-    max_170_df["Date"] = max_170_df["ParsedDate"].dt.strftime("%d-%b-%Y")
-    max_170_df = max_170_df[["Player", "Venue", "Date"]]
-    if not max_170_df.empty:
-        st.dataframe(max_170_df, hide_index=True)
+    if winners_overall.empty:
+        st.info("No winning legs found overall.")
     else:
-        st.info("No 170 checkouts recorded.")
+        winners_overall["Checkout"] = winners_overall[throw_cols].apply(
+            lambda row: row[pd.notna(row) & (row>0)].iloc[-1] if any(pd.notna(row) & (row>0)) else None,
+            axis=1
+        )
+        winners_overall = winners_overall.dropna(subset=["Checkout"])
+        winners_overall["Checkout"] = pd.to_numeric(winners_overall["Checkout"], errors="coerce")
+
+        if data_mode == "🏅 League Games":
+            overall_top5 = winners_overall[["Player","Division","Season","Checkout"]]
+        else:
+            overall_top5 = winners_overall[["Player","Venue","Date_str","Checkout"]]
+            overall_top5.rename(columns={"Date_str":"Date"}, inplace=True)
+
+        overall_top5 = overall_top5.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
+        st.markdown("🏆 **Top 5 Checkouts Overall**")
+        st.dataframe(overall_top5, hide_index=True)
 
 # --- Lowest Legs Page ---
 elif page == "🏁 Lowest Legs":
@@ -198,5 +246,6 @@ elif page == "🏁 Lowest Legs":
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
 
         st.dataframe(top5_overall, hide_index=True)
+
 
 
