@@ -161,17 +161,29 @@ elif page == "🏁 Lowest Legs":
         axis=1
     )
 
-    # Top 5 for selected competition/league
+    # --- Top 5 for selected competition/league ---
     lowest_legs = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
-    top5_lowest = lowest_legs[["Player", "Total Darts", "LastScore"]].head(5)
-    top5_lowest.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
+    
+    if data_mode == "🏆 Competitions":
+        top5_lowest = lowest_legs[["Player", "Venue", "Date_str", "Total Darts", "LastScore"]].head(5)
+        top5_lowest.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout", "Date_str": "Date"}, inplace=True)
+    else:
+        top5_lowest = lowest_legs[["Player", "Division", "Season", "Total Darts", "LastScore"]].head(5)
+        top5_lowest.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
+
     st.subheader(f"Lowest Legs — {selected_label}")
     st.dataframe(top5_lowest, hide_index=True)
 
-    # Top 5 across all competitions/leagues
+    # --- Top 5 overall across all competitions/leagues ---
     st.markdown("---")
     st.markdown("🏆 **Top 5 Lowest Legs Across All Competitions/Leagues:**")
+    
     all_lowest = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
-    top5_overall = all_lowest[["Player", "Competition" if data_mode=="🏆 Competitions" else "LeagueLabel", "Total Darts", "LastScore"]].head(5)
-    top5_overall.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
+    if data_mode == "🏆 Competitions":
+        top5_overall = all_lowest[["Player", "Venue", "Date_str", "Total Darts", "LastScore"]].head(5)
+        top5_overall.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout", "Date_str": "Date"}, inplace=True)
+    else:
+        top5_overall = all_lowest[["Player", "Division", "Season", "Total Darts", "LastScore"]].head(5)
+        top5_overall.rename(columns={"Total Darts": "Darts Thrown", "LastScore": "Checkout"}, inplace=True)
+    
     st.dataframe(top5_overall, hide_index=True)
