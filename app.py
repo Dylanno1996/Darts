@@ -156,13 +156,8 @@ elif page == "🎣 Checkout Stats":
     winners_df = winners_df.dropna(subset=["Checkout"])
     winners_df["Checkout"] = pd.to_numeric(winners_df["Checkout"], errors="coerce")
 
-    # --- Top 5 for selection (all checkouts) ---
-    if data_mode == "🏅 League Games":
-        top5_checkouts = winners_df[["Player","Division","Season","Checkout"]]
-    else:
-        top5_checkouts = winners_df[["Player","Venue","Date_str","Checkout"]]
-        top5_checkouts.rename(columns={"Date_str":"Date"}, inplace=True)
-
+    # --- Top 5 for selection (no venue/date needed) ---
+    top5_checkouts = winners_df[["Player","Checkout"]]
     top5_checkouts = top5_checkouts.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
     st.subheader(f"Highest Checkouts")
     st.dataframe(top5_checkouts, hide_index=True)
