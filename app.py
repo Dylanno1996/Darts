@@ -62,7 +62,7 @@ if "Player" not in full_df.columns or not throw_cols:
 
 # --- Sidebar navigation ---
 data_mode = st.sidebar.radio("📁 Select Data Type", ["🏆 Competitions", "🏅 League Games"])
-page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats", "🏁 Lowest Legs"])
+page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats", "👇 Lowest Legs"])
 
 # --- Filter dataset based on selection ---
 if data_mode == "🏆 Competitions":
@@ -241,7 +241,3 @@ elif page == "🏁 Lowest Legs":
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
 
         st.dataframe(top5_overall, hide_index=True)
-
-
-
-
