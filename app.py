@@ -125,7 +125,7 @@ if page == "🎯 180s Stats":
     if not season_180s.empty:
         max_180_row = season_180s.loc[season_180s["180s"].idxmax()]
         st.markdown("---")
-        st.markdown(f"**Most 180s for the Season: {int(max_180_row['180s'])} — {max_180_row['Player']}**")
+        st.markdown(f"🏆 Most 180s: {int(max_180_row['180s'])} — {max_180_row['Player']}")
 
     # --- Top 5 most 180s in a single competition ---
     st.markdown("---")
@@ -138,14 +138,8 @@ if page == "🎯 180s Stats":
         comp_group = overall_df.groupby(["Player","Venue","Date_str"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values(["180s"], ascending=False).head(5).reset_index(drop=True)
         comp_group.rename(columns={"Date_str":"Date"}, inplace=True)
-    
-    # Reorder columns to put 180s second
-    if data_mode == "🏅 League Games":
-        comp_group = comp_group[["Player", "180s", "Division", "Season"]]
-    else:
-        comp_group = comp_group[["Player", "180s", "Venue", "Date"]]
 
-    st.markdown("**Most 180s in a Single Competition**")
+    st.markdown("🏆 **Top 5 Most 180s in a Single Competition**")
     st.dataframe(comp_group, hide_index=True)
 
 # --- Checkout Stats Page ---
@@ -173,10 +167,20 @@ elif page == "🎣 Checkout Stats":
     st.subheader(f"Highest Checkouts")
     st.dataframe(top5_checkouts, hide_index=True)
 
-    # --- 170 Checkout Club ---
+    # --- 170 Checkout Club (whole season, ignores dropdown) ---
     st.markdown("---")
     st.markdown("## 🎣 The Big Fish")
-    max_170_df = winners_df[winners_df["Checkout"] == 170].copy()
+    
+    # Use active_df to get all data for the season/all competitions
+    winners_all = active_df[active_df["Result"].str.upper() == "WON"].copy()
+    winners_all["Checkout"] = winners_all[throw_cols].apply(
+        lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
+        axis=1
+    )
+    winners_all = winners_all.dropna(subset=["Checkout"])
+    winners_all["Checkout"] = pd.to_numeric(winners_all["Checkout"], errors="coerce")
+    
+    max_170_df = winners_all[winners_all["Checkout"] == 170].copy()
 
     if data_mode == "🏅 League Games":
         max_170_df = max_170_df[["Player","Division","Season"]].drop_duplicates()
