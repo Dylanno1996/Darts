@@ -139,8 +139,14 @@ if page == "🎯 180s":
         comp_group = overall_df.groupby(["Player","Venue","Date_str"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values(["180s"], ascending=False).head(5).reset_index(drop=True)
         comp_group.rename(columns={"Date_str":"Date"}, inplace=True)
+    
+    # Reorder columns to put 180s second
+    if data_mode == "🏅 League":
+        comp_group = comp_group[["Player", "180s", "Division", "Season"]]
+    else:
+        comp_group = comp_group[["Player", "180s", "Venue", "Date"]]
 
-    st.markdown("🏆 **Top 5 Most 180s in a Single Competition**")
+    st.markdown("**Most 180s in a Single Competition**")
     st.dataframe(comp_group, hide_index=True)
 
 # --- Checkout Stats Page ---
