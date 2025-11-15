@@ -142,9 +142,9 @@ if page == "🎯 180s":
     
     # Reorder columns to put 180s second
     if data_mode == "🏅 League":
-        comp_group = comp_group[["Player", "180s", "Division", "Season"]]
+        comp_group = comp_group[["180s", "Player", "Division", "Season"]]
     else:
-        comp_group = comp_group[["Player", "180s", "Venue", "Date"]]
+        comp_group = comp_group[["180s", "Player", "Venue", "Date"]]
 
     st.markdown("**Most 180s in a Single Competition**")
     st.dataframe(comp_group, hide_index=True)
