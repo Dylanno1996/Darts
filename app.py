@@ -196,10 +196,11 @@ elif page == "🎣 Checkout Stats":
         st.info("No 170 checkouts recorded.")
 
 # --- Lowest Legs Page ---
-elif page == "🏁 Lowest Legs":
+elif page == "👇 Lowest Legs":
     winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
     winners_overall = active_df[active_df["Result"].str.upper() == "WON"].copy()  # overall
 
+    # --- Top table: Lowest legs per player for selected dropdown ---
     if winners_df.empty:
         st.info("No winning legs found for this selection.")
     else:
@@ -210,15 +211,17 @@ elif page == "🏁 Lowest Legs":
             axis=1
         )
 
-        # --- Top 5 for selection (no context columns needed) ---
-        lowest_legs = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
-        top5_lowest = lowest_legs[["Player","Total Darts","LastScore"]].head(5)
+        # Get the lowest leg per player for this selection
+        lowest_per_player = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
+        lowest_per_player = lowest_per_player.groupby("Player").first().reset_index()
+        lowest_per_player = lowest_per_player.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
+        top5_lowest = lowest_per_player[["Player","Total Darts","LastScore"]].head(5).reset_index(drop=True)
         top5_lowest.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
 
         st.subheader(f"Lowest Legs — {selected_label}")
         st.dataframe(top5_lowest, hide_index=True)
 
-    # --- Overall Top 5 ---
+    # --- Bottom table: Overall lowest legs across all data (with venue/date) ---
     st.markdown("---")
     st.markdown("🏆 **Top 5 Lowest Legs Overall**")
 
@@ -232,15 +235,12 @@ elif page == "🏁 Lowest Legs":
         )
 
         all_lowest = winners_overall.sort_values(["Total Darts","LastScore"], ascending=[True,False])
+        
         if data_mode == "🏅 League Games":
-            # Safely convert Season to Int64
-            top5_overall = all_lowest[["Player","Division","Season","Total Darts","LastScore"]].head(5)
+            top5_overall = all_lowest[["Player","Total Darts","LastScore","Division","Season"]].head(5).reset_index(drop=True)
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
-
         else:
-            # Convert Season to integer
-            all_lowest["Season"] = all_lowest["Season"].astype("Int64")
-            top5_overall = all_lowest[["Player","Division","Season","Total Darts","LastScore"]].head(5)
-            top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
+            top5_overall = all_lowest[["Player","Total Darts","LastScore","Venue","Date_str"]].head(5).reset_index(drop=True)
+            top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout","Date_str":"Date"}, inplace=True)
 
         st.dataframe(top5_overall, hide_index=True)
