@@ -116,39 +116,31 @@ if page == "🎯 180s Stats":
     st.subheader(f"Total 180s - {total_180s}")
     st.dataframe(top5_stats, hide_index=True)
 
-    # --- Most 180s player (no duplicates) ---
-    comp_180s = filtered_df.groupby("Player")["180s"].sum().reset_index()
-    if not comp_180s.empty:
-        max_180_row = comp_180s.loc[comp_180s["180s"].idxmax()]
-        st.markdown("---")
-        st.markdown(f"🏆 Most 180s: {int(max_180_row['180s'])} — {max_180_row['Player']}")
-
-    # --- Overall Top 5 180s across all competitions/leagues ---
-    st.markdown("---")
+    # --- Most 180s player for whole season (ignores dropdown) ---
     overall_df = active_df.copy()
     overall_df["180s"] = overall_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
     )
-    overall_stats = overall_df.groupby("Player")[["180s"]].sum().reset_index()
-    overall_stats = overall_stats.sort_values("180s", ascending=False).head(5).reset_index(drop=True)
+    season_180s = overall_df.groupby("Player")["180s"].sum().reset_index()
+    if not season_180s.empty:
+        max_180_row = season_180s.loc[season_180s["180s"].idxmax()]
+        st.markdown("---")
+        st.markdown(f"🏆 Most 180s: {int(max_180_row['180s'])} — {max_180_row['Player']}")
 
-    # Add context for League or Competition
+    # --- Top 5 most 180s in a single competition ---
+    st.markdown("---")
     if data_mode == "🏅 League Games":
-        overall_stats = overall_stats.merge(
-            overall_df[["Player","Division","Season"]].drop_duplicates(),
-            on="Player",
-            how="left"
-        )
+        # For leagues, group by Player + Division + Season
+        comp_group = overall_df.groupby(["Player","Division","Season"])["180s"].sum().reset_index()
+        comp_group = comp_group.sort_values("180s", ascending=False).head(5).reset_index(drop=True)
     else:
-        overall_stats = overall_stats.merge(
-            overall_df[["Player","Venue","Date_str"]].drop_duplicates(),
-            on="Player",
-            how="left"
-        )
-        overall_stats.rename(columns={"Date_str":"Date"}, inplace=True)
+        # For competitions, group by Player + Venue + Date
+        comp_group = overall_df.groupby(["Player","Venue","Date_str"])["180s"].sum().reset_index()
+        comp_group = comp_group.sort_values(["180s"], ascending=False).head(5).reset_index(drop=True)
+        comp_group.rename(columns={"Date_str":"Date"}, inplace=True)
 
-    st.markdown("🏆 **Top 5 180s Overall**")
-    st.dataframe(overall_stats, hide_index=True)
+    st.markdown("🏆 **Top 5 Most 180s in a Single Competition**")
+    st.dataframe(comp_group, hide_index=True)
 
 # --- Checkout Stats Page ---
 elif page == "🎣 Checkout Stats":
