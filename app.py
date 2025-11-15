@@ -227,7 +227,7 @@ elif page == "👇 Lowest Legs":
 
     # --- Bottom table: Overall lowest legs across all data (with venue/date) ---
     st.markdown("---")
-    st.markdown("**Lowest Legs Overall**")
+    st.subheader("**Lowest Legs Overall**")
 
     if winners_overall.empty:
         st.info("No winning legs found overall.")
@@ -243,8 +243,11 @@ elif page == "👇 Lowest Legs":
         if data_mode == "🏅 League":
             top5_overall = all_lowest[["Player","Total Darts","LastScore","Division","Season"]].head(5).reset_index(drop=True)
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
+            ll_table_title = "**Lowest Leg in a League Season**"
         else:
             top5_overall = all_lowest[["Player","Total Darts","LastScore","Venue","Date_str"]].head(5).reset_index(drop=True)
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout","Date_str":"Date"}, inplace=True)
+            ll_table_title = "**Lowest Leg in a Grand Prix**"
 
         st.dataframe(top5_overall, hide_index=True)
+        st.subheader(ll_table_title)
