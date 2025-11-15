@@ -125,7 +125,8 @@ if page == "🎯 180s":
     if not season_180s.empty:
         max_180_row = season_180s.loc[season_180s["180s"].idxmax()]
         st.markdown("---")
-        st.markdown(f"🏆 Most 180s: {int(max_180_row['180s'])} — {max_180_row['Player']}")
+        st.markdown(f"Most 180s")
+        st.markdown(f"{int(max_180_row['180s'])} — {max_180_row['Player']}")
 
     # --- Top 5 most 180s in a single competition ---
     st.markdown("---")
