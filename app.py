@@ -184,11 +184,12 @@ elif page == "🎣 Checkout Stats":
 
     if data_mode == "🏅 League Games":
         max_170_df = max_170_df[["Player","Division","Season"]].drop_duplicates()
+        max_170_df = max_170_df.sort_values(by="Season", ascending=False).reset_index(drop=True)
     else:
-        max_170_df = max_170_df[["Player","Venue","Date_str"]].drop_duplicates()
+        max_170_df = max_170_df[["Player","Venue","Date_str","ParsedDate"]].drop_duplicates()
+        max_170_df = max_170_df.sort_values("ParsedDate", ascending=False, na_position="last").reset_index(drop=True)
+        max_170_df = max_170_df[["Player","Venue","Date_str"]]
         max_170_df.rename(columns={"Date_str":"Date"}, inplace=True)
-
-    max_170_df = max_170_df.sort_values(by=max_170_df.columns[-1], ascending=False).reset_index(drop=True)
     if not max_170_df.empty:
         st.dataframe(max_170_df, hide_index=True)
     else:
