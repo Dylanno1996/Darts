@@ -227,7 +227,6 @@ elif page == "👇 Lowest Legs":
 
     # --- Bottom table: Overall lowest legs across all data (with venue/date) ---
     st.markdown("---")
-    st.subheader("**Lowest Legs Overall**")
 
     if winners_overall.empty:
         st.info("No winning legs found overall.")
@@ -249,5 +248,5 @@ elif page == "👇 Lowest Legs":
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout","Date_str":"Date"}, inplace=True)
             ll_table_title = "**Lowest Leg in a Grand Prix**"
 
-        st.dataframe(top5_overall, hide_index=True)
         st.subheader(ll_table_title)
+        st.dataframe(top5_overall, hide_index=True)
