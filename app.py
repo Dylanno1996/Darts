@@ -2,8 +2,8 @@ import streamlit as st
 import pandas as pd
 import os
 
-st.set_page_config(page_title="IDL GP Stats", layout="centered")
-st.title("IDL GP Stats")
+st.set_page_config(page_title="IDL Stats", layout="centered")
+st.title("IDL Stats")
 
 # --- Load all CSV data ---
 data_folder = "data"
@@ -61,11 +61,11 @@ if "Player" not in full_df.columns or not throw_cols:
     st.stop()
 
 # --- Sidebar navigation ---
-data_mode = st.sidebar.radio("📁 Select Data Type", ["🏆 Competitions", "🏅 League Games"])
-page = st.sidebar.radio("📊 Select Page", ["🎯 180s Stats", "🎣 Checkout Stats", "👇 Lowest Legs"])
+data_mode = st.sidebar.radio("📁 Select Competition Type", ["🏆 Grand Prix", "🏅 League"])
+page = st.sidebar.radio("📊 Select Stat", ["🎯 180s", "🎣 Checkouts", "👇 Lowest Legs"])
 
 # --- Filter dataset based on selection ---
-if data_mode == "🏆 Competitions":
+if data_mode == "🏆 Grand Prix":
     active_df = full_df[full_df["DataType"] == "Competition"].copy()
     active_df["Venue"] = active_df["Venue"].astype(str)
     active_df["Competition"] = active_df["Venue"] + " - " + active_df["Date_str"]
@@ -94,7 +94,7 @@ else:
     filtered_df = active_df[active_df["LeagueLabel"] == selected_label].copy()
 
 # --- 180s Stats Page ---
-if page == "🎯 180s Stats":
+if page == "🎯 180s":
     # --- Calculate 180s, 140+, 100+ ---
     filtered_df["180s"] = filtered_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
@@ -129,7 +129,7 @@ if page == "🎯 180s Stats":
 
     # --- Top 5 most 180s in a single competition ---
     st.markdown("---")
-    if data_mode == "🏅 League Games":
+    if data_mode == "🏅 League":
         # For leagues, group by Player + Division + Season
         comp_group = overall_df.groupby(["Player","Division","Season"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values("180s", ascending=False).head(5).reset_index(drop=True)
@@ -143,7 +143,7 @@ if page == "🎯 180s Stats":
     st.dataframe(comp_group, hide_index=True)
 
 # --- Checkout Stats Page ---
-elif page == "🎣 Checkout Stats":
+elif page == "🎣 Checkouts":
     winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
     if winners_df.empty:
         st.info("No winning legs found — cannot calculate checkouts.")
@@ -177,7 +177,7 @@ elif page == "🎣 Checkout Stats":
     
     max_170_df = winners_all[winners_all["Checkout"] == 170].copy()
 
-    if data_mode == "🏅 League Games":
+    if data_mode == "🏅 League":
         max_170_df = max_170_df[["Player","Division","Season"]].drop_duplicates()
         max_170_df = max_170_df.sort_values(by="Season", ascending=False).reset_index(drop=True)
     else:
@@ -218,7 +218,7 @@ elif page == "👇 Lowest Legs":
 
     # --- Bottom table: Overall lowest legs across all data (with venue/date) ---
     st.markdown("---")
-    st.markdown("🏆 **Top 5 Lowest Legs Overall**")
+    st.markdown("**Lowest Legs Overall**")
 
     if winners_overall.empty:
         st.info("No winning legs found overall.")
@@ -231,7 +231,7 @@ elif page == "👇 Lowest Legs":
 
         all_lowest = winners_overall.sort_values(["Total Darts","LastScore"], ascending=[True,False])
         
-        if data_mode == "🏅 League Games":
+        if data_mode == "🏅 League":
             top5_overall = all_lowest[["Player","Total Darts","LastScore","Division","Season"]].head(5).reset_index(drop=True)
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
         else:
