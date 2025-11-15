@@ -143,10 +143,12 @@ if page == "🎯 180s":
     # Reorder columns to put 180s second
     if data_mode == "🏅 League":
         comp_group = comp_group[["180s", "Player", "Division", "Season"]]
+        table_title = "**Most 180s in a League Season**"
     else:
         comp_group = comp_group[["180s", "Player", "Venue", "Date"]]
+        table_title = "**Most 180s in a Grand Prix**" 
 
-    st.subheader("**Most 180s in a Single Competition**")
+    st.subheader(table_title)
     st.dataframe(comp_group, hide_index=True)
 
 # --- Checkout Stats Page ---
