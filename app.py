@@ -146,7 +146,7 @@ if page == "🎯 180s":
     else:
         comp_group = comp_group[["180s", "Player", "Venue", "Date"]]
 
-    st.markdown("**Most 180s in a Single Competition**")
+    st.subheader("**Most 180s in a Single Competition**")
     st.dataframe(comp_group, hide_index=True)
 
 # --- Checkout Stats Page ---
