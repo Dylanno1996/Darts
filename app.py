@@ -156,28 +156,33 @@ if page == "🎯 180s":
         # Create horizontal bar chart with Plotly
         import plotly.graph_objects as go
         
+        # Create unique labels for each entry (Player + index to handle duplicates)
+        chart_data = comp_group.copy()
+        chart_data['Display_Label'] = chart_data['Player'] + ' (' + chart_data['Venue'] + ')'
+        
         # Reverse order so highest is on top
-        chart_data = comp_group.iloc[::-1].reset_index(drop=True)
+        chart_data = chart_data.iloc[::-1].reset_index(drop=True)
         
         fig = go.Figure(go.Bar(
             x=chart_data["180s"],
-            y=chart_data["Player"],
+            y=chart_data["Display_Label"],
             orientation='h',
             text=chart_data["180s"],
             textposition='outside',
-            hovertemplate='<b>%{y}</b><br>' +
+            hovertemplate='<b>%{customdata[0]}</b><br>' +
                          '180s: %{x}<br>' +
-                         'Venue: %{customdata[0]}<br>' +
-                         'Date: %{customdata[1]}<extra></extra>',
-            customdata=chart_data[["Venue", "Date"]].values,
+                         'Venue: %{customdata[1]}<br>' +
+                         'Date: %{customdata[2]}<extra></extra>',
+            customdata=chart_data[["Player", "Venue", "Date"]].values,
             marker=dict(color='#1f77b4')
         ))
         
         fig.update_layout(
-            xaxis_title="Number of 180s",
+            xaxis_title="",
+            xaxis=dict(showticklabels=False, showgrid=False),
             yaxis_title="",
             height=300,
-            margin=dict(l=20, r=20, t=20, b=40),
+            margin=dict(l=20, r=20, t=20, b=20),
             showlegend=False
         )
         
