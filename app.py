@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import os
+import plotly
 
 st.set_page_config(page_title="IDL Stats", layout="centered")
 st.title("IDL Stats")
@@ -144,9 +145,43 @@ if page == "🎯 180s":
     if data_mode == "🏅 League":
         comp_group = comp_group[["180s", "Player", "Division", "Season"]]
         table_title = "**Most 180s in a League Season**"
+        st.subheader(table_title)
+        st.dataframe(comp_group, hide_index=True)
     else:
         comp_group = comp_group[["180s", "Player", "Venue", "Date"]]
-        table_title = "**Most 180s in a Grand Prix**" 
+        table_title = "**Most 180s in a Grand Prix**"
+        
+        st.subheader(table_title)
+        
+        # Create horizontal bar chart with Plotly
+        import plotly.graph_objects as go
+        
+        # Reverse order so highest is on top
+        chart_data = comp_group.iloc[::-1].reset_index(drop=True)
+        
+        fig = go.Figure(go.Bar(
+            x=chart_data["180s"],
+            y=chart_data["Player"],
+            orientation='h',
+            text=chart_data["180s"],
+            textposition='outside',
+            hovertemplate='<b>%{y}</b><br>' +
+                         '180s: %{x}<br>' +
+                         'Venue: %{customdata[0]}<br>' +
+                         'Date: %{customdata[1]}<extra></extra>',
+            customdata=chart_data[["Venue", "Date"]].values,
+            marker=dict(color='#1f77b4')
+        ))
+        
+        fig.update_layout(
+            xaxis_title="Number of 180s",
+            yaxis_title="",
+            height=300,
+            margin=dict(l=20, r=20, t=20, b=40),
+            showlegend=False
+        )
+        
+        st.plotly_chart(fig, use_container_width=True)
 
     st.subheader(table_title)
     st.dataframe(comp_group, hide_index=True)
