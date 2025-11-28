@@ -3,7 +3,7 @@ import pandas as pd
 import os
 import plotly
 
-st.set_page_config(page_title="IDL Stats", layout="centered")
+st.set_page_config(page_title="IDL Stats", layout="wide")
 st.title("IDL Stats")
 
 # --- Load all CSV data ---
@@ -63,7 +63,6 @@ if "Player" not in full_df.columns or not throw_cols:
 
 # --- Sidebar navigation ---
 data_mode = st.sidebar.radio("📁 Select Competition Type", ["🏆 Grand Prix", "🏅 League"])
-page = st.sidebar.radio("📊 Select Stat", ["🎯 180s", "🎣 Checkouts", "👇 Lowest Legs"])
 
 # --- Filter dataset based on selection ---
 if data_mode == "🏆 Grand Prix":
@@ -94,8 +93,11 @@ else:
     selected_label = st.selectbox("Select a league/season", options_df["LeagueLabel"].tolist())
     filtered_df = active_df[active_df["LeagueLabel"] == selected_label].copy()
 
+# --- Tabs for Stats ---
+tab1, tab2, tab3 = st.tabs(["🎯 180s", "🎣 Checkouts", "👇 Lowest Legs"])
+
 # --- 180s Stats Page ---
-if page == "🎯 180s":
+with tab1:
     # --- Calculate 180s, 140+, 100+ ---
     filtered_df["180s"] = filtered_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
@@ -140,7 +142,7 @@ if page == "🎯 180s":
         comp_group = overall_df.groupby(["Player","Venue","Date_str"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values(["180s"], ascending=False).head(5).reset_index(drop=True)
         comp_group.rename(columns={"Date_str":"Date"}, inplace=True)
-    
+
     # Reorder columns to put 180s second
     if data_mode == "🏅 League":
         comp_group = comp_group[["180s", "Player", "Division", "Season"]]
@@ -150,19 +152,19 @@ if page == "🎯 180s":
     else:
         comp_group = comp_group[["180s", "Player", "Venue", "Date"]]
         table_title = "**Most 180s in a Grand Prix**"
-        
+
         st.subheader(table_title)
-        
+
         # Create horizontal bar chart with Plotly
         import plotly.graph_objects as go
-        
+
         # Create unique labels using Player + Date (for uniqueness) but display only Player
         chart_data = comp_group.copy()
         chart_data['Unique_ID'] = chart_data['Player'] + '_' + chart_data['Date']
-        
+
         # Reverse order so highest is on top
         chart_data = chart_data.iloc[::-1].reset_index(drop=True)
-        
+
         fig = go.Figure(go.Bar(
             x=chart_data["180s"],
             y=chart_data["Unique_ID"],
@@ -176,13 +178,13 @@ if page == "🎯 180s":
             customdata=chart_data[["Player", "Venue", "Date"]].values,
             marker=dict(color='#1f77b4')
         ))
-        
+
         # Update y-axis to show only player names
         fig.update_yaxes(
             ticktext=chart_data["Player"],
             tickvals=chart_data["Unique_ID"]
         )
-        
+
         fig.update_layout(
             xaxis_title="",
             xaxis=dict(showticklabels=False, showgrid=False),
@@ -191,62 +193,61 @@ if page == "🎯 180s":
             margin=dict(l=20, r=20, t=20, b=20),
             showlegend=False
         )
-        
+
         st.plotly_chart(fig, use_container_width=True)
 
     st.subheader(table_title)
     st.dataframe(comp_group, hide_index=True)
 
 # --- Checkout Stats Page ---
-elif page == "🎣 Checkouts":
+with tab2:
     winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
     if winners_df.empty:
         st.info("No winning legs found — cannot calculate checkouts.")
-        st.stop()
-
-    winners_df["Checkout"] = winners_df[throw_cols].apply(
-        lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
-        axis=1
-    )
-    winners_df = winners_df.dropna(subset=["Checkout"])
-    winners_df["Checkout"] = pd.to_numeric(winners_df["Checkout"], errors="coerce")
-
-    # --- Top 5 for selection (no venue/date needed) ---
-    top5_checkouts = winners_df[["Player","Checkout"]]
-    top5_checkouts = top5_checkouts.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
-    st.subheader(f"Highest Checkouts")
-    st.dataframe(top5_checkouts, hide_index=True)
-
-    # --- 170 Checkout Club (whole season, ignores dropdown) ---
-    st.markdown("---")
-    st.markdown("## 🎣 The Big Fish")
-    
-    # Use active_df to get all data for the season/all competitions
-    winners_all = active_df[active_df["Result"].str.upper() == "WON"].copy()
-    winners_all["Checkout"] = winners_all[throw_cols].apply(
-        lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
-        axis=1
-    )
-    winners_all = winners_all.dropna(subset=["Checkout"])
-    winners_all["Checkout"] = pd.to_numeric(winners_all["Checkout"], errors="coerce")
-    
-    max_170_df = winners_all[winners_all["Checkout"] == 170].copy()
-
-    if data_mode == "🏅 League":
-        max_170_df = max_170_df[["Player","Division","Season"]].drop_duplicates()
-        max_170_df = max_170_df.sort_values(by="Season", ascending=False).reset_index(drop=True)
     else:
-        max_170_df = max_170_df[["Player","Venue","Date_str","ParsedDate"]].drop_duplicates()
-        max_170_df = max_170_df.sort_values("ParsedDate", ascending=False, na_position="last").reset_index(drop=True)
-        max_170_df = max_170_df[["Player","Venue","Date_str"]]
-        max_170_df.rename(columns={"Date_str":"Date"}, inplace=True)
-    if not max_170_df.empty:
-        st.dataframe(max_170_df, hide_index=True)
-    else:
-        st.info("No 170 checkouts recorded.")
+        winners_df["Checkout"] = winners_df[throw_cols].apply(
+            lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
+            axis=1
+        )
+        winners_df = winners_df.dropna(subset=["Checkout"])
+        winners_df["Checkout"] = pd.to_numeric(winners_df["Checkout"], errors="coerce")
+
+        # --- Top 5 for selection (no venue/date needed) ---
+        top5_checkouts = winners_df[["Player","Checkout"]]
+        top5_checkouts = top5_checkouts.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
+        st.subheader(f"Highest Checkouts")
+        st.dataframe(top5_checkouts, hide_index=True)
+
+        # --- 170 Checkout Club (whole season, ignores dropdown) ---
+        st.markdown("---")
+        st.markdown("## 🎣 The Big Fish")
+
+        # Use active_df to get all data for the season/all competitions
+        winners_all = active_df[active_df["Result"].str.upper() == "WON"].copy()
+        winners_all["Checkout"] = winners_all[throw_cols].apply(
+            lambda row: row[pd.notna(row) & (row > 0)].iloc[-1] if any(pd.notna(row) & (row > 0)) else None,
+            axis=1
+        )
+        winners_all = winners_all.dropna(subset=["Checkout"])
+        winners_all["Checkout"] = pd.to_numeric(winners_all["Checkout"], errors="coerce")
+
+        max_170_df = winners_all[winners_all["Checkout"] == 170].copy()
+
+        if data_mode == "🏅 League":
+            max_170_df = max_170_df[["Player","Division","Season"]].drop_duplicates()
+            max_170_df = max_170_df.sort_values(by="Season", ascending=False).reset_index(drop=True)
+        else:
+            max_170_df = max_170_df[["Player","Venue","Date_str","ParsedDate"]].drop_duplicates()
+            max_170_df = max_170_df.sort_values("ParsedDate", ascending=False, na_position="last").reset_index(drop=True)
+            max_170_df = max_170_df[["Player","Venue","Date_str"]]
+            max_170_df.rename(columns={"Date_str":"Date"}, inplace=True)
+        if not max_170_df.empty:
+            st.dataframe(max_170_df, hide_index=True)
+        else:
+            st.info("No 170 checkouts recorded.")
 
 # --- Lowest Legs Page ---
-elif page == "👇 Lowest Legs":
+with tab3:
     winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
     winners_overall = active_df[active_df["Result"].str.upper() == "WON"].copy()  # overall
 
@@ -284,7 +285,7 @@ elif page == "👇 Lowest Legs":
         )
 
         all_lowest = winners_overall.sort_values(["Total Darts","LastScore"], ascending=[True,False])
-        
+
         if data_mode == "🏅 League":
             top5_overall = all_lowest[["Player","Total Darts","LastScore","Division","Season"]].head(5).reset_index(drop=True)
             top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
