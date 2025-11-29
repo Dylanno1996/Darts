@@ -90,9 +90,7 @@ def load_and_process_data(data_folder):
     )
 
     # Calculate Last Throw (Potential Checkout)
-    # We define a helper to find the last valid score > 0
     def get_last_score(row):
-        # Get valid throws > 0
         valid = row[pd.notna(row) & (row > 0)]
         if not valid.empty:
             return valid.iloc[-1]
@@ -150,38 +148,47 @@ else:
     active_df["Season"] = active_df["Season"].astype(str)
     active_df["Division"] = active_df["Division"].astype(str)
 
+    # 1. Select Venue
     unique_venues = sorted(active_df["Venue"].unique())
     if not unique_venues:
         st.warning("No League venues found.")
         st.stop()
     selected_venue = st.selectbox("📍 Select League/Venue", unique_venues)
-    
     venue_df = active_df[active_df["Venue"] == selected_venue]
 
+    # 2. Select Season
     unique_seasons = venue_df["Season"].unique()
     try:
         unique_seasons = sorted(unique_seasons, key=lambda x: int(x), reverse=True)
     except ValueError:
         unique_seasons = sorted(unique_seasons, reverse=True)
     selected_season = st.selectbox("📅 Select Season", unique_seasons)
-
     season_df = venue_df[venue_df["Season"] == selected_season]
 
+    # 3. Select Division (With "All Divisions" option)
     unique_divisions = sorted(season_df["Division"].unique())
+    # --- NEW: Add "All Divisions" to the top of the list ---
+    unique_divisions.insert(0, "All Divisions")
+    
     selected_division = st.selectbox("🏆 Select Division", unique_divisions)
 
-    filtered_df = season_df[season_df["Division"] == selected_division].copy()
+    # --- NEW: Filtering Logic ---
+    if selected_division == "All Divisions":
+        # Do not filter by division, keep all data for this season/venue
+        filtered_df = season_df.copy()
+    else:
+        # Filter by the specific division
+        filtered_df = season_df[season_df["Division"] == selected_division].copy()
+        
     selected_label = f"{selected_venue} - S{selected_season} - {selected_division}"
 
 # ==========================
 # PAGE: 180s
 # ==========================
 if page == "🎯 180s":
-    # --- Calculations (Now Instant!) ---
-    # We just sum the pre-calculated columns
+    # --- Calculations ---
     player_stats = filtered_df.groupby("Player")[["Count180", "Count140", "Count100"]].sum().reset_index()
     
-    # Rename for display
     player_stats.rename(columns={
         "Count180": "180s", 
         "Count140": "140+", 
@@ -197,7 +204,6 @@ if page == "🎯 180s":
 
     # --- Bottom Chart Section ---
     overall_df = active_df.copy()
-    # No calculation needed here either, aggregation is instant
     
     st.markdown("---")
     
@@ -235,7 +241,7 @@ if page == "🎯 180s":
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
-            st.info("No 180s recorded.")
+            st.info("No 180s recorded in League data.")
         
     else:
         # Grand Prix Logic
@@ -272,7 +278,7 @@ if page == "🎯 180s":
             )
             st.plotly_chart(fig, use_container_width=True)
         else:
-             st.info("No 180s recorded.")
+             st.info("No 180s recorded in Grand Prix data.")
 
 # ==========================
 # PAGE: Checkouts
@@ -293,7 +299,6 @@ elif page == "🎣 Checkouts":
             cols_to_keep.append("URL")
 
         top5_checkouts = winners_df[cols_to_keep]
-        # Rename for display
         top5_checkouts.rename(columns={"LegCheckout": "Checkout"}, inplace=True)
         
         top5_checkouts = top5_checkouts.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
@@ -348,10 +353,8 @@ elif page == "👇 Lowest Legs":
     if winners_df.empty:
         st.info("No winning legs found for this selection.")
     else:
-        # Ensure Total Darts is numeric
         winners_df["Total Darts"] = pd.to_numeric(winners_df["Total Darts"], errors="coerce")
         
-        # Sort by Total Darts (asc), then Checkout (desc) using pre-calculated LegCheckout
         lowest_per_player = winners_df.sort_values(["Total Darts", "LegCheckout"], ascending=[True, False])
         lowest_per_player = lowest_per_player.groupby("Player", as_index=False).first()
         lowest_per_player = lowest_per_player.sort_values(["Total Darts", "LegCheckout"], ascending=[True, False])
