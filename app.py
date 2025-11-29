@@ -18,7 +18,7 @@ def detect_data_type(df):
     else:
         return "Competition"
 
-# CHANGED NAME TO FORCE CACHE RESET
+# Keeping the function name from the fix to ensure cache stability
 @st.cache_data(show_spinner="Loading and processing data...")
 def load_data_v4_fix(data_folder):
     """
@@ -95,7 +95,6 @@ def load_data_v4_fix(data_folder):
 
 # --- Load Data ---
 data_folder = "data"
-# CALLING NEW FUNCTION NAME
 full_df = load_data_v4_fix(data_folder)
 
 if full_df.empty:
@@ -109,7 +108,7 @@ if "Player" not in full_df.columns or not throw_cols:
     st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
     st.stop()
 
-# --- SAFETY CHECK: Recalculate if columns missing (Double-Safety for Mobile) ---
+# --- SAFETY CHECK: Recalculate if columns missing ---
 if "Count180" not in full_df.columns:
     full_df["Count180"] = full_df[throw_cols].isin([180]).sum(axis=1)
     full_df["Count140"] = full_df[throw_cols].apply(lambda row: ((row >= 140) & (row < 180)).sum(), axis=1)
@@ -148,8 +147,17 @@ with st.sidebar:
             st.warning("No Grand Prix data found.")
             st.stop()
             
-        selected_label = st.selectbox("Select a competition", options_df["Competition"].tolist())
-        filtered_df = active_df[active_df["Competition"] == selected_label].copy()
+        # Create list and add "All Competitions" option
+        comp_list = options_df["Competition"].tolist()
+        comp_list.insert(0, "All Competitions")
+        
+        selected_label = st.selectbox("Select a competition", comp_list)
+        
+        # --- NEW: Logic for All Competitions ---
+        if selected_label == "All Competitions":
+            filtered_df = active_df.copy()
+        else:
+            filtered_df = active_df[active_df["Competition"] == selected_label].copy()
 
     else:
         # --- LEAGUE DATA PROCESSING ---
