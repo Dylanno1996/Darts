@@ -227,7 +227,7 @@ with st.sidebar:
 # ==========================================
 
 # Create the tabs
-tab1, tab2, tab3, tab4 = st.tabs(["🎯 180s", "🎣 Checkouts", "👇 Lowest Legs", "🧪 Experimental Stats"])
+tab1, tab2, tab3, tab4, tab5 = st.tabs(["🎯 180s", "🎣 Checkouts", "👇 Lowest Legs", "📊 Player Stats", "👤 Individual"])
 
 # ------------------------------------------
 # TAB 1: 180s
@@ -443,122 +443,124 @@ with tab3:
         st.dataframe(top5_overall, column_config=column_config, hide_index=True)
 
 # ------------------------------------------
-# TAB 4: EXPERIMENTAL STATS
+# TAB 4: PLAYER STATS (Updated)
 # ------------------------------------------
 with tab4:
-    st.header(f"Experimental Statistics: {selected_label}")
+    st.header(f"Player Stats: {selected_label}")
 
-    # --- 1. 3-Dart Average & First 9 Average ---
-    st.subheader("📊 Player Averages")
+    # Need to aggregate Legs into Matches to calculate Match Win %
+    # Group by URL (unique match) and Player
+    # Columns needed: URL, Player, Result (Legs)
 
-    # Calculate Overall 3-Dart Average per player
-    # Average = Sum of All Throws / Sum of All Darts Thrown * 3
-    # Need to group by player and sum totals
+    if not filtered_df.empty:
+        # 1. Aggregate to Player-Match Level to count Match Wins
+        # For each match (URL), count legs won vs legs lost
+        match_level = filtered_df.groupby(["Player", "URL", "Opponent"]).apply(
+            lambda x: pd.Series({
+                "LegsWon": (x["Result"].str.upper() == "WON").sum(),
+                "LegsLost": (x["Result"].str.upper() == "LOST").sum(),
+                "LegsPlayed": len(x)
+            })
+        ).reset_index()
 
-    avg_stats = filtered_df.groupby("Player").apply(
-        lambda x: pd.Series({
-            "TotalScore": x["TotalScored"].sum(),
-            "TotalDarts": x["Total Darts"].sum(),
-            "AvgFirst9": x["First9Avg"].mean(), # Average of the averages
-            "Matches": len(x),
-            "Wins": (x["Result"].str.upper() == "WON").sum()
-        })
-    ).reset_index()
+        # Determine Match Result
+        def determine_match_result(row):
+            if row["LegsWon"] > row["LegsLost"]:
+                return "WON"
+            elif row["LegsWon"] < row["LegsLost"]:
+                return "LOST"
+            else:
+                return "DRAW"
 
-    # Avoid division by zero
-    avg_stats["3DartAvg"] = avg_stats.apply(
-        lambda r: (r["TotalScore"] / r["TotalDarts"]) * 3 if r["TotalDarts"] > 0 else 0, axis=1
-    )
+        match_level["MatchResult"] = match_level.apply(determine_match_result, axis=1)
 
-    avg_stats["WinRate"] = (avg_stats["Wins"] / avg_stats["Matches"]) * 100
+        # 2. Group by Player to get Overall Stats
+        player_agg = filtered_df.groupby("Player").apply(
+            lambda x: pd.Series({
+                "TotalScore": x["TotalScored"].sum(),
+                "TotalDarts": x["Total Darts"].sum(),
+                "AvgFirst9": x["First9Avg"].mean(),
+                "TotalLegsPlayed": len(x),
+                "TotalLegsWon": (x["Result"].str.upper() == "WON").sum()
+            })
+        ).reset_index()
 
-    display_stats = avg_stats[["Player", "3DartAvg", "AvgFirst9", "WinRate", "Matches"]].copy()
-    display_stats = display_stats.sort_values("3DartAvg", ascending=False).reset_index(drop=True)
+        # Join with Match Stats
+        match_agg = match_level.groupby("Player").apply(
+            lambda x: pd.Series({
+                "MatchesPlayed": len(x),
+                "MatchesWon": (x["MatchResult"] == "WON").sum()
+            })
+        ).reset_index()
 
-    st.dataframe(
-        display_stats,
-        column_config={
-            "3DartAvg": st.column_config.NumberColumn("3-Dart Avg", format="%.2f"),
-            "AvgFirst9": st.column_config.NumberColumn("First 9 Avg", format="%.2f"),
-            "WinRate": st.column_config.ProgressColumn("Win Rate (%)", format="%.1f%%", min_value=0, max_value=100),
-        },
-        hide_index=True
-    )
+        final_stats = pd.merge(player_agg, match_agg, on="Player")
 
-    st.markdown("---")
+        # Calculations
+        final_stats["3DartAvg"] = final_stats.apply(
+            lambda r: (r["TotalScore"] / r["TotalDarts"]) * 3 if r["TotalDarts"] > 0 else 0, axis=1
+        )
+        final_stats["MatchWin%"] = (final_stats["MatchesWon"] / final_stats["MatchesPlayed"]) * 100
+        final_stats["LegWin%"] = (final_stats["TotalLegsWon"] / final_stats["TotalLegsPlayed"]) * 100
 
-    # --- 2. Consistency (Standard Deviation) ---
-    st.subheader("🎯 Consistency (Standard Deviation of Visit Scores)")
-    st.caption("Lower value means more consistent scoring. Higher value means more fluctuation.")
+        display_stats = final_stats[[
+            "Player", "MatchesPlayed", "MatchesWon", "MatchWin%",
+            "LegWin%", "3DartAvg", "AvgFirst9"
+        ]].copy()
 
-    consistency_df = filtered_df.groupby("Player")["VisitStdDev"].mean().reset_index()
-    consistency_df.rename(columns={"VisitStdDev": "ConsistencyScore"}, inplace=True)
-    consistency_df = consistency_df.sort_values("ConsistencyScore", ascending=True).head(10) # Top 10 most consistent
+        display_stats = display_stats.sort_values("3DartAvg", ascending=False).reset_index(drop=True)
 
-    fig_cons = px.bar(
-        consistency_df,
-        x="ConsistencyScore",
-        y="Player",
-        orientation='h',
-        title="Top 10 Most Consistent Players (Lowest Std Dev)",
-        text_auto='.2f'
-    )
-    fig_cons.update_layout(yaxis={'categoryorder':'total descending'})
-    st.plotly_chart(fig_cons, use_container_width=True)
+        st.dataframe(
+            display_stats,
+            column_config={
+                "MatchWin%": st.column_config.ProgressColumn("Match Win %", format="%.1f%%", min_value=0, max_value=100),
+                "LegWin%": st.column_config.NumberColumn("Leg Win %", format="%.1f%%"),
+                "3DartAvg": st.column_config.NumberColumn("3-Dart Avg", format="%.2f"),
+                "AvgFirst9": st.column_config.NumberColumn("First 9 Avg", format="%.2f"),
+            },
+            hide_index=True
+        )
+    else:
+        st.info("No data available.")
 
-    st.markdown("---")
+# ------------------------------------------
+# TAB 5: INDIVIDUAL (New)
+# ------------------------------------------
+with tab5:
+    st.header("👤 Individual Player Analysis")
 
-    # --- 3. Win Rate Over Time ---
-    st.subheader("📈 Performance Over Time")
-
-    # Select a player to view details
     player_list = sorted(filtered_df["Player"].unique())
-    selected_player = st.selectbox("Select Player for Trend Analysis", player_list)
+    selected_player = st.selectbox("Select Player", player_list)
+
+    # 1. Performance Over Time (Avg Only)
+    st.subheader("📈 Average Over Time")
 
     player_history = active_df[active_df["Player"] == selected_player].copy()
 
-    # Determine time axis
     if data_mode == "🏆 Grand Prix":
-        # Group by Date
         time_col = "ParsedDate"
         time_label = "Date"
         player_history = player_history.sort_values("ParsedDate")
     else:
-        # Group by Season
         time_col = "Season"
         time_label = "Season"
         player_history = player_history.sort_values("Season")
 
-    # Group by time unit and calculate win rate
     trend_df = player_history.groupby(time_col).apply(
         lambda x: pd.Series({
-            "WinRate": (x["Result"].str.upper() == "WON").mean() * 100,
             "3DartAvg": (x["TotalScored"].sum() / x["Total Darts"].sum()) * 3 if x["Total Darts"].sum() > 0 else 0
         })
     ).reset_index()
 
     if not trend_df.empty:
-        # Create dual-axis chart
         fig_trend = go.Figure()
-
-        # Win Rate Line
-        fig_trend.add_trace(go.Scatter(
-            x=trend_df[time_col], y=trend_df["WinRate"],
-            name="Win Rate (%)", mode='lines+markers', line=dict(color='green')
-        ))
-
-        # Average Line
         fig_trend.add_trace(go.Scatter(
             x=trend_df[time_col], y=trend_df["3DartAvg"],
-            name="3-Dart Avg", mode='lines+markers', line=dict(color='blue'), yaxis="y2"
+            name="3-Dart Avg", mode='lines+markers', line=dict(color='blue')
         ))
-
         fig_trend.update_layout(
-            title=f"Win Rate & Average Over Time: {selected_player}",
             xaxis_title=time_label,
-            yaxis=dict(title="Win Rate (%)", range=[0, 105]),
-            yaxis2=dict(title="3-Dart Avg", overlaying="y", side="right"),
-            legend=dict(x=0.01, y=0.99)
+            yaxis_title="3-Dart Avg",
+            margin=dict(l=20, r=20, t=20, b=20)
         )
         st.plotly_chart(fig_trend, use_container_width=True)
     else:
@@ -566,32 +568,48 @@ with tab4:
 
     st.markdown("---")
 
-    # --- 4. Head-to-Head Matrix ---
-    st.subheader("⚔️ Head-to-Head Record")
+    # 2. Head-to-Head (Matches Won)
+    st.subheader("⚔️ Head-to-Head (Matches Won)")
 
-    # Filter for selected player matches
+    # Filter for selected player legs
     h2h_df = active_df[active_df["Player"] == selected_player].copy()
 
     if not h2h_df.empty and "Opponent" in h2h_df.columns:
-        # Calculate wins vs each opponent
-        opponent_stats = h2h_df.groupby("Opponent").apply(
+        # Need to aggregate to MATCH level first
+        match_outcomes = h2h_df.groupby(["URL", "Opponent"]).apply(
             lambda x: pd.Series({
-                "Games": len(x),
-                "Wins": (x["Result"].str.upper() == "WON").sum(),
-                "Losses": (x["Result"].str.upper() == "LOST").sum()
+                "LegsWon": (x["Result"].str.upper() == "WON").sum(),
+                "LegsLost": (x["Result"].str.upper() == "LOST").sum()
             })
         ).reset_index()
 
-        opponent_stats["WinRate"] = (opponent_stats["Wins"] / opponent_stats["Games"]) * 100
-        opponent_stats = opponent_stats.sort_values("Games", ascending=False).head(20) # Top 20 rivals
+        def get_outcome(r):
+            if r["LegsWon"] > r["LegsLost"]: return "WON"
+            elif r["LegsWon"] < r["LegsLost"]: return "LOST"
+            else: return "DRAW"
+
+        match_outcomes["Result"] = match_outcomes.apply(get_outcome, axis=1)
+
+        # Now group by Opponent to count Matches Won
+        rivals = match_outcomes.groupby("Opponent").apply(
+            lambda x: pd.Series({
+                "MatchesPlayed": len(x),
+                "MatchesWon": (x["Result"] == "WON").sum(),
+                "MatchesLost": (x["Result"] == "LOST").sum(),
+                "MatchesDrawn": (x["Result"] == "DRAW").sum()
+            })
+        ).reset_index()
+
+        # Sort by Matches Won desc
+        rivals = rivals.sort_values("MatchesWon", ascending=False).head(20)
 
         fig_h2h = px.bar(
-            opponent_stats,
+            rivals,
             x="Opponent",
-            y=["Wins", "Losses"],
-            title=f"Head-to-Head: {selected_player} vs Top Rivals",
+            y=["MatchesWon", "MatchesLost", "MatchesDrawn"],
+            title=f"Head-to-Head: {selected_player} (Matches)",
             barmode='stack',
-            color_discrete_map={"Wins": "green", "Losses": "red"}
+            color_discrete_map={"MatchesWon": "green", "MatchesLost": "red", "MatchesDrawn": "gray"}
         )
         st.plotly_chart(fig_h2h, use_container_width=True)
     else:
