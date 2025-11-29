@@ -336,15 +336,31 @@ elif page == "👇 Lowest Legs":
         winners_df = calculate_lowest_legs(winners_df)
         
         # Lowest per player
+        # Sort by best leg (Least darts, then highest checkout)
         lowest_per_player = winners_df.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
-        lowest_per_player = lowest_per_player.groupby("Player").first().reset_index()
+        # Group to get unique players, taking their best leg
+        lowest_per_player = lowest_per_player.groupby("Player", as_index=False).first()
+        # Re-sort to order the table
         lowest_per_player = lowest_per_player.sort_values(["Total Darts", "LastScore"], ascending=[True, False])
         
-        top5_lowest = lowest_per_player[["Player","Total Darts","LastScore"]].head(5).reset_index(drop=True)
-        top5_lowest.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
+        # Define Columns (No Checkout, Add URL)
+        cols_to_keep = ["Player", "Total Darts"]
+        if "URL" in lowest_per_player.columns:
+            cols_to_keep.append("URL")
+
+        top5_lowest = lowest_per_player[cols_to_keep].head(5).reset_index(drop=True)
+        top5_lowest.rename(columns={"Total Darts":"Darts Thrown"}, inplace=True)
 
         st.subheader(f"Lowest Legs — {selected_label}")
-        st.dataframe(top5_lowest, hide_index=True)
+        
+        # Column Config for URL
+        column_config = {}
+        if "URL" in top5_lowest.columns:
+            column_config["URL"] = st.column_config.LinkColumn(
+                "Match Link", display_text="View Match"
+            )
+            
+        st.dataframe(top5_lowest, column_config=column_config, hide_index=True)
 
     # --- Overall Lowest Legs ---
     st.markdown("---")
@@ -354,14 +370,27 @@ elif page == "👇 Lowest Legs":
         winners_overall = calculate_lowest_legs(winners_overall)
         all_lowest = winners_overall.sort_values(["Total Darts","LastScore"], ascending=[True,False])
         
+        # Select Columns (No Checkout, Add URL)
         if data_mode == "🏅 League":
-            top5_overall = all_lowest[["Player","Total Darts","LastScore","Division","Season"]].head(5).reset_index(drop=True)
-            top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
+            cols = ["Player","Total Darts","Division","Season"]
             ll_table_title = "**Lowest Leg in a League Season**"
         else:
-            top5_overall = all_lowest[["Player","Total Darts","LastScore","Venue","Date_str"]].head(5).reset_index(drop=True)
-            top5_overall.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout","Date_str":"Date"}, inplace=True)
+            cols = ["Player","Total Darts","Venue","Date_str"]
             ll_table_title = "**Lowest Leg in a Grand Prix**"
+            
+        if "URL" in all_lowest.columns:
+            cols.append("URL")
+
+        top5_overall = all_lowest[cols].head(5).reset_index(drop=True)
+        top5_overall.rename(columns={"Total Darts":"Darts Thrown", "Date_str":"Date"}, inplace=True)
 
         st.subheader(ll_table_title)
-        st.dataframe(top5_overall, hide_index=True)
+        
+        # Column Config for URL
+        column_config = {}
+        if "URL" in top5_overall.columns:
+            column_config["URL"] = st.column_config.LinkColumn(
+                "Match Link", display_text="View Match"
+            )
+            
+        st.dataframe(top5_overall, column_config=column_config, hide_index=True)
