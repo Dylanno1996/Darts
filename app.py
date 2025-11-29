@@ -328,9 +328,21 @@ elif page == "🎣 Checkouts":
         max_170_df = max_170_df[cols_170].drop_duplicates()
         max_170_df = max_170_df.sort_values(by="Season", ascending=False).reset_index(drop=True)
     else:
-        max_170_df = max_170_df[["Player","Venue","Date_str","ParsedDate"]].drop_duplicates()
+        # Grand Prix Logic
+        cols_gp = ["Player", "Venue", "Date_str", "ParsedDate"]
+        # Add URL if it exists
+        if "URL" in max_170_df.columns:
+            cols_gp.append("URL")
+
+        max_170_df = max_170_df[cols_gp].drop_duplicates()
         max_170_df = max_170_df.sort_values("ParsedDate", ascending=False, na_position="last").reset_index(drop=True)
-        max_170_df = max_170_df[["Player","Venue","Date_str"]]
+        
+        # Define Final Display Columns
+        cols_display = ["Player", "Venue", "Date_str"]
+        if "URL" in max_170_df.columns:
+            cols_display.append("URL")
+
+        max_170_df = max_170_df[cols_display]
         max_170_df.rename(columns={"Date_str":"Date"}, inplace=True)
     
     if not max_170_df.empty:
