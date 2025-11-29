@@ -18,8 +18,9 @@ def detect_data_type(df):
     else:
         return "Competition"
 
+# CHANGED NAME TO FORCE CACHE RESET
 @st.cache_data(show_spinner="Loading and processing data...")
-def load_and_process_data(data_folder):
+def load_data_v4_fix(data_folder):
     """
     Loads all CSVs, combines them, and performs heavy processing 
     (Date parsing, Numeric conversion, and STATS CALCULATION) only once.
@@ -94,7 +95,8 @@ def load_and_process_data(data_folder):
 
 # --- Load Data ---
 data_folder = "data"
-full_df = load_and_process_data(data_folder)
+# CALLING NEW FUNCTION NAME
+full_df = load_data_v4_fix(data_folder)
 
 if full_df.empty:
     st.warning("No CSV files found in the data folder or folder is missing.")
@@ -106,6 +108,19 @@ throw_cols = [col for col in full_df.columns if col.startswith("Throw_")]
 if "Player" not in full_df.columns or not throw_cols:
     st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
     st.stop()
+
+# --- SAFETY CHECK: Recalculate if columns missing (Double-Safety for Mobile) ---
+if "Count180" not in full_df.columns:
+    full_df["Count180"] = full_df[throw_cols].isin([180]).sum(axis=1)
+    full_df["Count140"] = full_df[throw_cols].apply(lambda row: ((row >= 140) & (row < 180)).sum(), axis=1)
+    full_df["Count100"] = full_df[throw_cols].apply(lambda row: ((row >= 100) & (row < 140)).sum(), axis=1)
+    
+    def get_last_score(row):
+        valid = row[pd.notna(row) & (row > 0)]
+        if not valid.empty:
+            return valid.iloc[-1]
+        return 0
+    full_df["LegCheckout"] = full_df[throw_cols].apply(get_last_score, axis=1)
 
 # ==========================================
 # SIDEBAR: FILTERS & NAVIGATION
