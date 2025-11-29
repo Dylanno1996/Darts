@@ -8,16 +8,6 @@ st.set_page_config(page_title="IDL Stats", layout="centered")
 st.title("IDL Stats")
 
 # --- Helper Functions ---
-def style_centered(df):
-    """
-    Centers all cell values and ensures numbers look like integers (no 5.0).
-    """
-    return (df.style
-            .format(precision=0)  # Ensures numbers don't show unnecessary decimals
-            .set_properties(**{'text-align': 'center'})
-            .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
-            )
-
 def detect_data_type(df):
     """Determine if the CSV is a Competition or League file."""
     has_division = "Division" in df.columns and df["Division"].notna().any()
@@ -66,7 +56,6 @@ def load_and_process_data(data_folder):
         date_formats = ["%d/%m/%Y", "%d-%m-%Y", "%d.%m.%Y", "%d %m %Y"]
         for fmt in date_formats:
             mask_unparsed = full_df["ParsedDate"].isna()
-            # Only try parsing rows that haven't been parsed yet
             if mask_unparsed.any():
                 temp_parsed = pd.to_datetime(
                     full_df.loc[mask_unparsed, "OriginalDate"], 
@@ -186,8 +175,7 @@ if page == "🎯 180s":
     player_stats = player_stats.sort_values(by=["180s", "140+", "100+"], ascending=[False, False, False])
     
     st.subheader(f"Total 180s - {total_180s}")
-    # Applied style_centered
-    st.dataframe(style_centered(player_stats), hide_index=True)
+    st.dataframe(player_stats, hide_index=True)
 
     # --- Bottom Table (Most 180s in Single Competition) ---
     overall_df = active_df.copy()
@@ -206,8 +194,7 @@ if page == "🎯 180s":
         comp_group = comp_group[["180s", "Player", "Venue", "Division", "Season"]]
         
         st.subheader("**Most 180s in a League Season**")
-        # Applied style_centered
-        st.dataframe(style_centered(comp_group), hide_index=True)
+        st.dataframe(comp_group, hide_index=True)
         
     else:
         # Grand Prix Logic
@@ -246,8 +233,7 @@ if page == "🎯 180s":
             showlegend=False
         )
         st.plotly_chart(fig, use_container_width=True)
-        # Applied style_centered
-        st.dataframe(style_centered(comp_group), hide_index=True)
+        st.dataframe(comp_group, hide_index=True)
 
 # ==========================
 # PAGE: Checkouts
@@ -270,8 +256,7 @@ elif page == "🎣 Checkouts":
         top5_checkouts = top5_checkouts.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
         
         st.subheader(f"Highest Checkouts")
-        # Applied style_centered
-        st.dataframe(style_centered(top5_checkouts), hide_index=True)
+        st.dataframe(top5_checkouts, hide_index=True)
 
     # --- 170 Club ---
     st.markdown("---")
@@ -297,8 +282,7 @@ elif page == "🎣 Checkouts":
         max_170_df.rename(columns={"Date_str":"Date"}, inplace=True)
     
     if not max_170_df.empty:
-        # Applied style_centered
-        st.dataframe(style_centered(max_170_df), hide_index=True)
+        st.dataframe(max_170_df, hide_index=True)
     else:
         st.info("No 170 checkouts recorded.")
 
@@ -334,8 +318,7 @@ elif page == "👇 Lowest Legs":
         top5_lowest.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
 
         st.subheader(f"Lowest Legs — {selected_label}")
-        # Applied style_centered
-        st.dataframe(style_centered(top5_lowest), hide_index=True)
+        st.dataframe(top5_lowest, hide_index=True)
 
     # --- Overall Lowest Legs ---
     st.markdown("---")
@@ -355,5 +338,4 @@ elif page == "👇 Lowest Legs":
             ll_table_title = "**Lowest Leg in a Grand Prix**"
 
         st.subheader(ll_table_title)
-        # Applied style_centered
-        st.dataframe(style_centered(top5_overall), hide_index=True)
+        st.dataframe(top5_overall, hide_index=True)
