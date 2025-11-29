@@ -8,6 +8,16 @@ st.set_page_config(page_title="IDL Stats", layout="centered")
 st.title("IDL Stats")
 
 # --- Helper Functions ---
+def style_centered(df):
+    """
+    Centers all cell values and ensures numbers look like integers (no 5.0).
+    """
+    return (df.style
+            .format(precision=0)  # Ensures numbers don't show unnecessary decimals
+            .set_properties(**{'text-align': 'center'})
+            .set_table_styles([{'selector': 'th', 'props': [('text-align', 'center')]}])
+            )
+
 def detect_data_type(df):
     """Determine if the CSV is a Competition or League file."""
     has_division = "Division" in df.columns and df["Division"].notna().any()
@@ -58,7 +68,6 @@ def load_and_process_data(data_folder):
             mask_unparsed = full_df["ParsedDate"].isna()
             # Only try parsing rows that haven't been parsed yet
             if mask_unparsed.any():
-                # We use a temporary series to avoid SettingWithCopy warnings in some pandas versions
                 temp_parsed = pd.to_datetime(
                     full_df.loc[mask_unparsed, "OriginalDate"], 
                     format=fmt, 
@@ -118,56 +127,39 @@ if data_mode == "🏆 Grand Prix":
     filtered_df = active_df[active_df["Competition"] == selected_label].copy()
 
 else:
-    # --- LEAGUE DATA PROCESSING ---
+    # --- LEAGUE DATA PROCESSING (Cascading Dropdowns) ---
     active_df = full_df[full_df["DataType"] == "League"].copy()
     
     # Ensure columns are strings for smooth filtering
-    active_df["Venue"] = active_df["Venue"].astype(str)
+    active_df["Venue"] = active_df.get("Venue", pd.Series(dtype='str')).astype(str)
     active_df["Season"] = active_df["Season"].astype(str)
     active_df["Division"] = active_df["Division"].astype(str)
 
-    # --- 1. Select Venue (League) ---
-    # Get unique venues and sort them
+    # 1. Select Venue
     unique_venues = sorted(active_df["Venue"].unique())
-    
-    # If there is data, show the selectbox
     if not unique_venues:
         st.warning("No League venues found.")
         st.stop()
-        
     selected_venue = st.selectbox("📍 Select League/Venue", unique_venues)
     
-    # Filter dataset based on Venue selection
-    venue_mask = active_df["Venue"] == selected_venue
-    venue_df = active_df[venue_mask]
+    venue_df = active_df[active_df["Venue"] == selected_venue]
 
-    # --- 2. Select Season (Dependent on Venue) ---
-    # Get seasons only for the selected venue
+    # 2. Select Season
     unique_seasons = venue_df["Season"].unique()
-    
-    # Sort seasons: try to sort numerically if possible (e.g. 10 comes after 2), otherwise alphabetically
     try:
         unique_seasons = sorted(unique_seasons, key=lambda x: int(x), reverse=True)
     except ValueError:
         unique_seasons = sorted(unique_seasons, reverse=True)
-
     selected_season = st.selectbox("📅 Select Season", unique_seasons)
 
-    # Filter dataset based on Season selection
-    season_mask = venue_df["Season"] == selected_season
-    season_df = venue_df[season_mask]
+    season_df = venue_df[venue_df["Season"] == selected_season]
 
-    # --- 3. Select Division (Dependent on Season) ---
-    # Get divisions only for the selected venue and season
+    # 3. Select Division
     unique_divisions = sorted(season_df["Division"].unique())
-    
     selected_division = st.selectbox("🏆 Select Division", unique_divisions)
 
-    # --- Final Filter ---
-    # Apply the final division filter
+    # Final Filter
     filtered_df = season_df[season_df["Division"] == selected_division].copy()
-    
-    # Update the label for display purposes later in the app
     selected_label = f"{selected_venue} - S{selected_season} - {selected_division}"
 
 # ==========================
@@ -193,11 +185,9 @@ if page == "🎯 180s":
     # Sort by 180s, then 140s, then 100s
     player_stats = player_stats.sort_values(by=["180s", "140+", "100+"], ascending=[False, False, False])
     
-    # Removed .head(5) to show ALL players
     st.subheader(f"Total 180s - {total_180s}")
-    st.dataframe(player_stats, hide_index=True)
-
-    # (Deleted the "Most 180s (All Time/Season)" text section here)
+    # Applied style_centered
+    st.dataframe(style_centered(player_stats), hide_index=True)
 
     # --- Bottom Table (Most 180s in Single Competition) ---
     overall_df = active_df.copy()
@@ -208,18 +198,19 @@ if page == "🎯 180s":
     st.markdown("---")
     
     if data_mode == "🏅 League":
-        # Added "Venue" to the groupby list
+        # Group by Venue as well
         comp_group = overall_df.groupby(["Player", "Venue", "Division", "Season"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values("180s", ascending=False).head(5).reset_index(drop=True)
         
-        # Added Venue to the display columns
+        # Add Venue to display
         comp_group = comp_group[["180s", "Player", "Venue", "Division", "Season"]]
         
         st.subheader("**Most 180s in a League Season**")
-        st.dataframe(comp_group, hide_index=True)
+        # Applied style_centered
+        st.dataframe(style_centered(comp_group), hide_index=True)
         
     else:
-        # Grand Prix Logic (unchanged)
+        # Grand Prix Logic
         comp_group = overall_df.groupby(["Player", "Venue", "Date_str"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values(["180s"], ascending=False).head(5).reset_index(drop=True)
         comp_group.rename(columns={"Date_str": "Date"}, inplace=True)
@@ -255,7 +246,8 @@ if page == "🎯 180s":
             showlegend=False
         )
         st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(comp_group, hide_index=True)
+        # Applied style_centered
+        st.dataframe(style_centered(comp_group), hide_index=True)
 
 # ==========================
 # PAGE: Checkouts
@@ -278,7 +270,8 @@ elif page == "🎣 Checkouts":
         top5_checkouts = top5_checkouts.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
         
         st.subheader(f"Highest Checkouts")
-        st.dataframe(top5_checkouts, hide_index=True)
+        # Applied style_centered
+        st.dataframe(style_centered(top5_checkouts), hide_index=True)
 
     # --- 170 Club ---
     st.markdown("---")
@@ -304,7 +297,8 @@ elif page == "🎣 Checkouts":
         max_170_df.rename(columns={"Date_str":"Date"}, inplace=True)
     
     if not max_170_df.empty:
-        st.dataframe(max_170_df, hide_index=True)
+        # Applied style_centered
+        st.dataframe(style_centered(max_170_df), hide_index=True)
     else:
         st.info("No 170 checkouts recorded.")
 
@@ -340,7 +334,8 @@ elif page == "👇 Lowest Legs":
         top5_lowest.rename(columns={"Total Darts":"Darts Thrown","LastScore":"Checkout"}, inplace=True)
 
         st.subheader(f"Lowest Legs — {selected_label}")
-        st.dataframe(top5_lowest, hide_index=True)
+        # Applied style_centered
+        st.dataframe(style_centered(top5_lowest), hide_index=True)
 
     # --- Overall Lowest Legs ---
     st.markdown("---")
@@ -360,4 +355,5 @@ elif page == "👇 Lowest Legs":
             ll_table_title = "**Lowest Leg in a Grand Prix**"
 
         st.subheader(ll_table_title)
-        st.dataframe(top5_overall, hide_index=True)
+        # Applied style_centered
+        st.dataframe(style_centered(top5_overall), hide_index=True)
