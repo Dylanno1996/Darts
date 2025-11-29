@@ -185,48 +185,49 @@ if page == "🎯 180s":
         lambda row: sum(1 for score in row if pd.notna(score) and 100 <= score <= 139), axis=1
     )
 
-    # --- Top 5 Table ---
+    # --- Main Table (All Players) ---
     player_stats = filtered_df.groupby("Player")[["180s", "140_179", "100_139"]].sum().reset_index()
     player_stats.rename(columns={"140_179": "140+", "100_139": "100+"}, inplace=True)
     total_180s = int(player_stats["180s"].sum()) if not player_stats.empty else 0
     
+    # Sort by 180s, then 140s, then 100s
     player_stats = player_stats.sort_values(by=["180s", "140+", "100+"], ascending=[False, False, False])
-    top5_stats = player_stats.head(5).reset_index(drop=True)
-
+    
+    # Removed .head(5) to show ALL players
     st.subheader(f"Total 180s - {total_180s}")
-    st.dataframe(top5_stats, hide_index=True)
+    st.dataframe(player_stats, hide_index=True)
 
-    # --- Season Max 180s ---
+    # (Deleted the "Most 180s (All Time/Season)" text section here)
+
+    # --- Bottom Table (Most 180s in Single Competition) ---
     overall_df = active_df.copy()
     overall_df["180s"] = overall_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
     )
-    season_180s = overall_df.groupby("Player")["180s"].sum().reset_index()
-    
-    if not season_180s.empty:
-        max_180_row = season_180s.loc[season_180s["180s"].idxmax()]
-        st.markdown("---")
-        st.subheader(f"**Most 180s (All Time/Season)**")
-        st.markdown(f"{int(max_180_row['180s'])} — {max_180_row['Player']}")
 
-    # --- Most 180s in a Single Competition ---
     st.markdown("---")
+    
     if data_mode == "🏅 League":
-        comp_group = overall_df.groupby(["Player","Division","Season"])["180s"].sum().reset_index()
+        # Added "Venue" to the groupby list
+        comp_group = overall_df.groupby(["Player", "Venue", "Division", "Season"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values("180s", ascending=False).head(5).reset_index(drop=True)
-        comp_group = comp_group[["180s", "Player", "Division", "Season"]]
+        
+        # Added Venue to the display columns
+        comp_group = comp_group[["180s", "Player", "Venue", "Division", "Season"]]
         
         st.subheader("**Most 180s in a League Season**")
         st.dataframe(comp_group, hide_index=True)
+        
     else:
-        comp_group = overall_df.groupby(["Player","Venue","Date_str"])["180s"].sum().reset_index()
+        # Grand Prix Logic (unchanged)
+        comp_group = overall_df.groupby(["Player", "Venue", "Date_str"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values(["180s"], ascending=False).head(5).reset_index(drop=True)
-        comp_group.rename(columns={"Date_str":"Date"}, inplace=True)
+        comp_group.rename(columns={"Date_str": "Date"}, inplace=True)
         comp_group = comp_group[["180s", "Player", "Venue", "Date"]]
         
         st.subheader("**Most 180s in a Grand Prix**")
         
-        # --- Plotly Chart ---
+        # Plotly Chart
         chart_data = comp_group.copy()
         chart_data['Unique_ID'] = chart_data['Player'] + '_' + chart_data['Date']
         chart_data = chart_data.iloc[::-1].reset_index(drop=True)
@@ -244,10 +245,7 @@ if page == "🎯 180s":
             customdata=chart_data[["Player", "Venue", "Date"]].values,
             marker=dict(color='#1f77b4')
         ))
-        fig.update_yaxes(
-            ticktext=chart_data["Player"],
-            tickvals=chart_data["Unique_ID"]
-        )
+        fig.update_yaxes(ticktext=chart_data["Player"], tickvals=chart_data["Unique_ID"])
         fig.update_layout(
             xaxis_title="",
             xaxis=dict(showticklabels=False, showgrid=False),
