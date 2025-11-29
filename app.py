@@ -416,7 +416,8 @@ elif page == "👇 Lowest Legs":
         
         # Select Columns (No Checkout, Add URL)
         if data_mode == "🏅 League":
-            cols = ["Player","Total Darts","Division","Season"]
+            # Added Venue here between Total Darts and Division
+            cols = ["Player","Total Darts","Venue","Division","Season"]
             ll_table_title = "**Lowest Leg in a League Season**"
         else:
             cols = ["Player","Total Darts","Venue","Date_str"]
