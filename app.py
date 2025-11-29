@@ -118,23 +118,57 @@ if data_mode == "🏆 Grand Prix":
     filtered_df = active_df[active_df["Competition"] == selected_label].copy()
 
 else:
+    # --- LEAGUE DATA PROCESSING ---
     active_df = full_df[full_df["DataType"] == "League"].copy()
-    active_df["Division"] = active_df["Division"].astype(str)
-    active_df["Season"] = active_df["Season"].astype(str)
-    active_df["LeagueLabel"] = active_df["Division"] + " - " + active_df["Season"]
-
-    options_df = (
-        active_df[["LeagueLabel", "Division", "Season"]]
-        .drop_duplicates()
-        .reset_index(drop=True)
-    )
     
-    if options_df.empty:
-        st.warning("No League data found.")
-        st.stop()
+    # Ensure columns are strings for smooth filtering
+    active_df["Venue"] = active_df["Venue"].astype(str)
+    active_df["Season"] = active_df["Season"].astype(str)
+    active_df["Division"] = active_df["Division"].astype(str)
 
-    selected_label = st.selectbox("Select a league/season", options_df["LeagueLabel"].tolist())
-    filtered_df = active_df[active_df["LeagueLabel"] == selected_label].copy()
+    # --- 1. Select Venue (League) ---
+    # Get unique venues and sort them
+    unique_venues = sorted(active_df["Venue"].unique())
+    
+    # If there is data, show the selectbox
+    if not unique_venues:
+        st.warning("No League venues found.")
+        st.stop()
+        
+    selected_venue = st.selectbox("📍 Select League/Venue", unique_venues)
+    
+    # Filter dataset based on Venue selection
+    venue_mask = active_df["Venue"] == selected_venue
+    venue_df = active_df[venue_mask]
+
+    # --- 2. Select Season (Dependent on Venue) ---
+    # Get seasons only for the selected venue
+    unique_seasons = venue_df["Season"].unique()
+    
+    # Sort seasons: try to sort numerically if possible (e.g. 10 comes after 2), otherwise alphabetically
+    try:
+        unique_seasons = sorted(unique_seasons, key=lambda x: int(x), reverse=True)
+    except ValueError:
+        unique_seasons = sorted(unique_seasons, reverse=True)
+
+    selected_season = st.selectbox("📅 Select Season", unique_seasons)
+
+    # Filter dataset based on Season selection
+    season_mask = venue_df["Season"] == selected_season
+    season_df = venue_df[season_mask]
+
+    # --- 3. Select Division (Dependent on Season) ---
+    # Get divisions only for the selected venue and season
+    unique_divisions = sorted(season_df["Division"].unique())
+    
+    selected_division = st.selectbox("🏆 Select Division", unique_divisions)
+
+    # --- Final Filter ---
+    # Apply the final division filter
+    filtered_df = season_df[season_df["Division"] == selected_division].copy()
+    
+    # Update the label for display purposes later in the app
+    selected_label = f"{selected_venue} - S{selected_season} - {selected_division}"
 
 # ==========================
 # PAGE: 180s
