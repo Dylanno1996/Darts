@@ -252,11 +252,26 @@ elif page == "🎣 Checkouts":
         winners_df = winners_df.dropna(subset=["Checkout"])
         winners_df["Checkout"] = pd.to_numeric(winners_df["Checkout"], errors="coerce")
 
-        top5_checkouts = winners_df[["Player","Checkout"]]
+        # Define columns to keep
+        cols_to_keep = ["Player", "Checkout"]
+        
+        # Check if URL exists in the CSV
+        if "URL" in winners_df.columns:
+            cols_to_keep.append("URL")
+
+        top5_checkouts = winners_df[cols_to_keep]
         top5_checkouts = top5_checkouts.sort_values("Checkout", ascending=False).head(5).reset_index(drop=True)
         
         st.subheader(f"Highest Checkouts")
-        st.dataframe(top5_checkouts, hide_index=True)
+
+        # Configure the column if it exists
+        column_config = {}
+        if "URL" in top5_checkouts.columns:
+            column_config["URL"] = st.column_config.LinkColumn(
+                "Match Link", display_text="View Match"
+            )
+
+        st.dataframe(top5_checkouts, column_config=column_config, hide_index=True)
 
     # --- 170 Club ---
     st.markdown("---")
@@ -273,7 +288,12 @@ elif page == "🎣 Checkouts":
     max_170_df = winners_all[winners_all["Checkout"] == 170].copy()
 
     if data_mode == "🏅 League":
-        max_170_df = max_170_df[["Player","Division","Season"]].drop_duplicates()
+        # Keep URL here too if it exists
+        cols_170 = ["Player", "Division", "Season"]
+        if "URL" in max_170_df.columns:
+            cols_170.append("URL")
+            
+        max_170_df = max_170_df[cols_170].drop_duplicates()
         max_170_df = max_170_df.sort_values(by="Season", ascending=False).reset_index(drop=True)
     else:
         max_170_df = max_170_df[["Player","Venue","Date_str","ParsedDate"]].drop_duplicates()
@@ -282,7 +302,13 @@ elif page == "🎣 Checkouts":
         max_170_df.rename(columns={"Date_str":"Date"}, inplace=True)
     
     if not max_170_df.empty:
-        st.dataframe(max_170_df, hide_index=True)
+        # Config for 170 table
+        cfg_170 = {}
+        if "URL" in max_170_df.columns:
+            cfg_170["URL"] = st.column_config.LinkColumn(
+                "Match Link", display_text="View Match"
+            )
+        st.dataframe(max_170_df, column_config=cfg_170, hide_index=True)
     else:
         st.info("No 170 checkouts recorded.")
 
