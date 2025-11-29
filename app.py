@@ -73,21 +73,13 @@ def load_and_process_data(data_folder):
     for c in throw_cols:
         full_df[c] = pd.to_numeric(full_df[c], errors="coerce")
 
-    # --- OPTIMIZATION START: Pre-calculate everything here ---
-    
-    # Calculate 180s/140s/100s (Vectorized for speed)
+    # --- Pre-calculate Stats ---
     # 180s
     full_df["Count180"] = full_df[throw_cols].isin([180]).sum(axis=1)
-    
-    # 140+ (>= 140 and < 180)
-    full_df["Count140"] = full_df[throw_cols].apply(
-        lambda row: ((row >= 140) & (row < 180)).sum(), axis=1
-    )
-    
-    # 100+ (>= 100 and < 140)
-    full_df["Count100"] = full_df[throw_cols].apply(
-        lambda row: ((row >= 100) & (row < 140)).sum(), axis=1
-    )
+    # 140+
+    full_df["Count140"] = full_df[throw_cols].apply(lambda row: ((row >= 140) & (row < 180)).sum(), axis=1)
+    # 100+
+    full_df["Count100"] = full_df[throw_cols].apply(lambda row: ((row >= 100) & (row < 140)).sum(), axis=1)
 
     # Calculate Last Throw (Potential Checkout)
     def get_last_score(row):
@@ -97,8 +89,7 @@ def load_and_process_data(data_folder):
         return 0
 
     full_df["LegCheckout"] = full_df[throw_cols].apply(get_last_score, axis=1)
-    # --- OPTIMIZATION END ---
-        
+    
     return full_df
 
 # --- Load Data ---
@@ -116,77 +107,84 @@ if "Player" not in full_df.columns or not throw_cols:
     st.error("CSV files must have 'Player' column and throw columns like 'Throw_1', 'Throw_2'.")
     st.stop()
 
-# --- Sidebar Navigation ---
-data_mode = st.sidebar.radio("📁 Select Competition Type", ["🏆 Grand Prix", "🏅 League"])
-page = st.sidebar.radio("📊 Select Stat", ["🎯 180s", "🎣 Checkouts", "👇 Lowest Legs"])
-
-# --- Filter Dataset ---
-if data_mode == "🏆 Grand Prix":
-    active_df = full_df[full_df["DataType"] == "Competition"].copy()
-    active_df["Venue"] = active_df["Venue"].astype(str)
-    active_df["Competition"] = active_df["Venue"] + " - " + active_df["Date_str"]
-
-    options_df = (
-        active_df[["Competition", "ParsedDate"]]
-        .drop_duplicates()
-        .sort_values("ParsedDate", ascending=False, na_position="last")
-        .reset_index(drop=True)
-    )
+# ==========================================
+# SIDEBAR: FILTERS & NAVIGATION
+# ==========================================
+with st.sidebar:
+    st.header("⚙️ Configuration")
+    data_mode = st.radio("Select Competition Type", ["🏆 Grand Prix", "🏅 League"])
     
-    if options_df.empty:
-        st.warning("No Grand Prix data found.")
-        st.stop()
+    st.markdown("---")
+
+    # --- Filter Dataset Logic ---
+    if data_mode == "🏆 Grand Prix":
+        active_df = full_df[full_df["DataType"] == "Competition"].copy()
+        active_df["Venue"] = active_df["Venue"].astype(str)
+        active_df["Competition"] = active_df["Venue"] + " - " + active_df["Date_str"]
+
+        options_df = (
+            active_df[["Competition", "ParsedDate"]]
+            .drop_duplicates()
+            .sort_values("ParsedDate", ascending=False, na_position="last")
+            .reset_index(drop=True)
+        )
         
-    selected_label = st.selectbox("Select a competition", options_df["Competition"].tolist())
-    filtered_df = active_df[active_df["Competition"] == selected_label].copy()
+        if options_df.empty:
+            st.warning("No Grand Prix data found.")
+            st.stop()
+            
+        selected_label = st.selectbox("Select a competition", options_df["Competition"].tolist())
+        filtered_df = active_df[active_df["Competition"] == selected_label].copy()
 
-else:
-    # --- LEAGUE DATA PROCESSING ---
-    active_df = full_df[full_df["DataType"] == "League"].copy()
-    
-    active_df["Venue"] = active_df.get("Venue", pd.Series(dtype='str')).astype(str)
-    active_df["Season"] = active_df["Season"].astype(str)
-    active_df["Division"] = active_df["Division"].astype(str)
-
-    # 1. Select Venue
-    unique_venues = sorted(active_df["Venue"].unique())
-    if not unique_venues:
-        st.warning("No League venues found.")
-        st.stop()
-    selected_venue = st.selectbox("📍 Select League/Venue", unique_venues)
-    venue_df = active_df[active_df["Venue"] == selected_venue]
-
-    # 2. Select Season
-    unique_seasons = venue_df["Season"].unique()
-    try:
-        unique_seasons = sorted(unique_seasons, key=lambda x: int(x), reverse=True)
-    except ValueError:
-        unique_seasons = sorted(unique_seasons, reverse=True)
-    selected_season = st.selectbox("📅 Select Season", unique_seasons)
-    season_df = venue_df[venue_df["Season"] == selected_season]
-
-    # 3. Select Division (With "All Divisions" option)
-    unique_divisions = sorted(season_df["Division"].unique())
-    # --- NEW: Add "All Divisions" to the top of the list ---
-    unique_divisions.insert(0, "All Divisions")
-    
-    selected_division = st.selectbox("🏆 Select Division", unique_divisions)
-
-    # --- NEW: Filtering Logic ---
-    if selected_division == "All Divisions":
-        # Do not filter by division, keep all data for this season/venue
-        filtered_df = season_df.copy()
     else:
-        # Filter by the specific division
-        filtered_df = season_df[season_df["Division"] == selected_division].copy()
+        # --- LEAGUE DATA PROCESSING ---
+        active_df = full_df[full_df["DataType"] == "League"].copy()
         
-    selected_label = f"{selected_venue} - S{selected_season} - {selected_division}"
+        active_df["Venue"] = active_df.get("Venue", pd.Series(dtype='str')).astype(str)
+        active_df["Season"] = active_df["Season"].astype(str)
+        active_df["Division"] = active_df["Division"].astype(str)
 
-# ==========================
-# PAGE: 180s
-# ==========================
-if page == "🎯 180s":
-    # --- Calculations ---
+        # 1. Select Venue
+        unique_venues = sorted(active_df["Venue"].unique())
+        if not unique_venues:
+            st.warning("No League venues found.")
+            st.stop()
+        selected_venue = st.selectbox("📍 Select League/Venue", unique_venues)
+        venue_df = active_df[active_df["Venue"] == selected_venue]
+
+        # 2. Select Season
+        unique_seasons = venue_df["Season"].unique()
+        try:
+            unique_seasons = sorted(unique_seasons, key=lambda x: int(x), reverse=True)
+        except ValueError:
+            unique_seasons = sorted(unique_seasons, reverse=True)
+        selected_season = st.selectbox("📅 Select Season", unique_seasons)
+        season_df = venue_df[venue_df["Season"] == selected_season]
+
+        # 3. Select Division (With "All Divisions")
+        unique_divisions = sorted(season_df["Division"].unique())
+        unique_divisions.insert(0, "All Divisions")
+        
+        selected_division = st.selectbox("🏆 Select Division", unique_divisions)
+
+        if selected_division == "All Divisions":
+            filtered_df = season_df.copy()
+        else:
+            filtered_df = season_df[season_df["Division"] == selected_division].copy()
+            
+        selected_label = f"{selected_venue} - S{selected_season} - {selected_division}"
+
+# ==========================================
+# MAIN PAGE: TABS
+# ==========================================
+
+# Create the tabs
+tab1, tab2, tab3 = st.tabs(["🎯 180s", "🎣 Checkouts", "👇 Lowest Legs"])
+
+# ------------------------------------------
+# TAB 1: 180s
+# ------------------------------------------
+with tab1:
     player_stats = filtered_df.groupby("Player")[["Count180", "Count140", "Count100"]].sum().reset_index()
     
     player_stats.rename(columns={
@@ -204,7 +202,6 @@ if page == "🎯 180s":
 
     # --- Bottom Chart Section ---
     overall_df = active_df.copy()
-    
     st.markdown("---")
     
     if data_mode == "🏅 League":
@@ -280,23 +277,19 @@ if page == "🎯 180s":
         else:
              st.info("No 180s recorded in Grand Prix data.")
 
-# ==========================
-# PAGE: Checkouts
-# ==========================
-elif page == "🎣 Checkouts":
-    # Filter for winners only
+# ------------------------------------------
+# TAB 2: Checkouts
+# ------------------------------------------
+with tab2:
     winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
     
     if winners_df.empty:
         st.info("No winning legs found — cannot calculate checkouts.")
     else:
-        # Use PRE-CALCULATED column "LegCheckout"
         winners_df = winners_df[winners_df["LegCheckout"] > 0]
         
-        # Define columns
         cols_to_keep = ["Player", "LegCheckout"]
-        if "URL" in winners_df.columns:
-            cols_to_keep.append("URL")
+        if "URL" in winners_df.columns: cols_to_keep.append("URL")
 
         top5_checkouts = winners_df[cols_to_keep]
         top5_checkouts.rename(columns={"LegCheckout": "Checkout"}, inplace=True)
@@ -342,14 +335,14 @@ elif page == "🎣 Checkouts":
     else:
         st.info("No 170 checkouts recorded.")
 
-# ==========================
-# PAGE: Lowest Legs
-# ==========================
-elif page == "👇 Lowest Legs":
+# ------------------------------------------
+# TAB 3: Lowest Legs
+# ------------------------------------------
+with tab3:
     winners_df = filtered_df[filtered_df["Result"].str.upper() == "WON"].copy()
     winners_overall = active_df[active_df["Result"].str.upper() == "WON"].copy()
 
-    # --- Selected Competition Lowest Legs ---
+    # Selected Competition
     if winners_df.empty:
         st.info("No winning legs found for this selection.")
     else:
@@ -373,7 +366,7 @@ elif page == "👇 Lowest Legs":
             
         st.dataframe(top5_lowest, column_config=column_config, hide_index=True)
 
-    # --- Overall Lowest Legs ---
+    # Overall Lowest Legs
     st.markdown("---")
     if winners_overall.empty:
         st.info("No winning legs found overall.")
