@@ -177,7 +177,7 @@ if page == "🎯 180s":
     st.subheader(f"Total 180s - {total_180s}")
     st.dataframe(player_stats, hide_index=True)
 
-    # --- Bottom Table (Most 180s in Single Competition) ---
+    # --- Bottom Chart Section ---
     overall_df = active_df.copy()
     overall_df["180s"] = overall_df[throw_cols].apply(
         lambda row: sum(1 for score in row if pd.notna(score) and score == 180), axis=1
@@ -186,54 +186,86 @@ if page == "🎯 180s":
     st.markdown("---")
     
     if data_mode == "🏅 League":
-        # Group by Venue as well
+        # Group by Player/Venue/Division/Season
         comp_group = overall_df.groupby(["Player", "Venue", "Division", "Season"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values("180s", ascending=False).head(5).reset_index(drop=True)
         
-        # Add Venue to display
-        comp_group = comp_group[["180s", "Player", "Venue", "Division", "Season"]]
-        
         st.subheader("**Most 180s in a League Season**")
-        st.dataframe(comp_group, hide_index=True)
+        
+        # --- League Bar Chart ---
+        if not comp_group.empty:
+            chart_data = comp_group.copy()
+            # Create Unique ID to prevent merging same player in different seasons if they appear in Top 5 twice
+            chart_data['Unique_ID'] = chart_data['Player'] + '_' + chart_data['Season'].astype(str)
+            # Reverse for horizontal bar order
+            chart_data = chart_data.iloc[::-1].reset_index(drop=True)
+            
+            fig = go.Figure(go.Bar(
+                x=chart_data["180s"],
+                y=chart_data["Unique_ID"],
+                orientation='h',
+                text=chart_data["180s"],
+                textposition='outside',
+                hovertemplate='<b>%{customdata[0]}</b><br>' +
+                              '180s: %{x}<br>' +
+                              'Venue: %{customdata[1]}<br>' +
+                              'Division: %{customdata[2]}<br>' +
+                              'Season: %{customdata[3]}<extra></extra>',
+                customdata=chart_data[["Player", "Venue", "Division", "Season"]].values,
+                marker=dict(color='#1f77b4')
+            ))
+            fig.update_yaxes(ticktext=chart_data["Player"], tickvals=chart_data["Unique_ID"])
+            fig.update_layout(
+                xaxis_title="",
+                xaxis=dict(showticklabels=False, showgrid=False),
+                yaxis_title="",
+                height=300,
+                margin=dict(l=20, r=20, t=20, b=20),
+                showlegend=False
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+            st.info("No 180s recorded in League data.")
         
     else:
         # Grand Prix Logic
         comp_group = overall_df.groupby(["Player", "Venue", "Date_str"])["180s"].sum().reset_index()
         comp_group = comp_group.sort_values(["180s"], ascending=False).head(5).reset_index(drop=True)
         comp_group.rename(columns={"Date_str": "Date"}, inplace=True)
-        comp_group = comp_group[["180s", "Player", "Venue", "Date"]]
         
         st.subheader("**Most 180s in a Grand Prix**")
         
-        # Plotly Chart
-        chart_data = comp_group.copy()
-        chart_data['Unique_ID'] = chart_data['Player'] + '_' + chart_data['Date']
-        chart_data = chart_data.iloc[::-1].reset_index(drop=True)
-        
-        fig = go.Figure(go.Bar(
-            x=chart_data["180s"],
-            y=chart_data["Unique_ID"],
-            orientation='h',
-            text=chart_data["180s"],
-            textposition='outside',
-            hovertemplate='<b>%{customdata[0]}</b><br>' +
-                          '180s: %{x}<br>' +
-                          'Venue: %{customdata[1]}<br>' +
-                          'Date: %{customdata[2]}<extra></extra>',
-            customdata=chart_data[["Player", "Venue", "Date"]].values,
-            marker=dict(color='#1f77b4')
-        ))
-        fig.update_yaxes(ticktext=chart_data["Player"], tickvals=chart_data["Unique_ID"])
-        fig.update_layout(
-            xaxis_title="",
-            xaxis=dict(showticklabels=False, showgrid=False),
-            yaxis_title="",
-            height=300,
-            margin=dict(l=20, r=20, t=20, b=20),
-            showlegend=False
-        )
-        st.plotly_chart(fig, use_container_width=True)
-        st.dataframe(comp_group, hide_index=True)
+        # --- GP Bar Chart ---
+        if not comp_group.empty:
+            chart_data = comp_group.copy()
+            chart_data['Unique_ID'] = chart_data['Player'] + '_' + chart_data['Date']
+            chart_data = chart_data.iloc[::-1].reset_index(drop=True)
+            
+            fig = go.Figure(go.Bar(
+                x=chart_data["180s"],
+                y=chart_data["Unique_ID"],
+                orientation='h',
+                text=chart_data["180s"],
+                textposition='outside',
+                hovertemplate='<b>%{customdata[0]}</b><br>' +
+                              '180s: %{x}<br>' +
+                              'Venue: %{customdata[1]}<br>' +
+                              'Date: %{customdata[2]}<extra></extra>',
+                customdata=chart_data[["Player", "Venue", "Date"]].values,
+                marker=dict(color='#1f77b4')
+            ))
+            fig.update_yaxes(ticktext=chart_data["Player"], tickvals=chart_data["Unique_ID"])
+            fig.update_layout(
+                xaxis_title="",
+                xaxis=dict(showticklabels=False, showgrid=False),
+                yaxis_title="",
+                height=300,
+                margin=dict(l=20, r=20, t=20, b=20),
+                showlegend=False
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        else:
+             st.info("No 180s recorded in Grand Prix data.")
 
 # ==========================
 # PAGE: Checkouts
